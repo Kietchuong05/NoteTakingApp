@@ -28,6 +28,6 @@ export default defineConfig([
   },
   {
   extends: "react-app"
- }
+  }
 ])
 
