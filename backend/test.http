@@ -1,7 +1,0 @@
-POST http://localhost:3000/api/notes HTTP/1.1
-Content-Type: application/json
-
-{
-    "title": "Ghi chú API mới",
-    "content": "Nội dung của ghi chú được tạo qua API POST."
-}
