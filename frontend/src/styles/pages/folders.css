@@ -1,0 +1,157 @@
+.folders-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.page-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 32px !important;
+    border-radius: 16px !important;
+    margin-bottom: 32px;
+    border: 1px solid #e2e8f0;
+}
+
+.summary-card {
+    padding: 20px;
+    border-radius: 12px !important;
+    text-align: center;
+    background: white;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.3s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.folders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.folders-list .folder-card {
+    margin-bottom: 0;
+}
+
+/* Grid View */
+.folder-card-grid {
+    height: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+.folder-card-grid:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.folder-card-grid::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--folder-color), transparent);
+}
+
+/* List View */
+.folder-card-list {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.folder-card-list:hover {
+    background-color: #f8fafc;
+    transform: translateX(4px);
+}
+
+.folder-content-list {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 16px;
+}
+
+/* Color dot */
+.color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+/* Action buttons */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.folder-card:hover .action-buttons {
+    opacity: 1;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    background-color: #f8fafc;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.folder-card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .folders-page {
+        padding: 16px;
+    }
+    
+    .page-header {
+        padding: 24px 16px !important;
+    }
+    
+    .summary-card {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 600px) {
+    .folder-card-list {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .folder-content-list {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
