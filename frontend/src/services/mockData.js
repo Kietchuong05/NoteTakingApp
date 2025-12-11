@@ -94,9 +94,76 @@ export const mockNotes = [
 ];
 
 export const mockTags = [
-  { id: 1, name: "công việc", color: "#3b82f6", count: 8 },
-  { id: 2, name: "học tập", color: "#10b981", count: 5 },
-  { id: 3, name: "cá nhân", color: "#f59e0b", count: 3 },
-  { id: 4, name: "react", color: "#61dafb", count: 4 },
-  { id: 5, name: "javascript", color: "#f0db4f", count: 6 }
+  {
+    id: 1,
+    name: "công việc",
+    color: "#3b82f6",
+    description: "Ghi chú liên quan đến công việc",
+    count: 8,
+    starred: true,
+    createdAt: new Date('2024-01-15')
+  },
+  {
+    id: 2,
+    name: "học tập",
+    color: "#10b981",
+    description: "Ghi chú học tập và nghiên cứu",
+    count: 5,
+    starred: true,
+    createdAt: new Date('2024-02-10')
+  },
+  {
+    id: 3,
+    name: "cá nhân",
+    color: "#f59e0b",
+    description: "Ghi chú cá nhân, cuộc sống",
+    count: 3,
+    starred: false,
+    createdAt: new Date('2024-01-20')
+  },
+  {
+    id: 4,
+    name: "react",
+    color: "#61dafb",
+    description: "Ghi chú về React và các thư viện liên quan",
+    count: 4,
+    starred: true,
+    createdAt: new Date('2024-02-15')
+  },
+  {
+    id: 5,
+    name: "javascript",
+    color: "#f0db4f",
+    description: "Ghi chú về JavaScript và ES6+",
+    count: 6,
+    starred: false,
+    createdAt: new Date('2024-01-25')
+  },
+  {
+    id: 6,
+    name: "meeting",
+    color: "#8b5cf6",
+    description: "Ghi chú cuộc họp",
+    count: 2,
+    starred: false,
+    createdAt: new Date('2024-03-01')
+  },
+  {
+    id: 7,
+    name: "planning",
+    color: "#ec4899",
+    description: "Kế hoạch và lịch trình",
+    count: 3,
+    starred: true,
+    createdAt: new Date('2024-02-20')
+  },
+  {
+    id: 8,
+    name: "ideas",
+    color: "#84cc16",
+    description: "Ý tưởng và sáng tạo",
+    count: 1,
+    starred: false,
+    createdAt: new Date('2024-03-05')
+  }
 ];
