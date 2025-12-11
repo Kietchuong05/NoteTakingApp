@@ -1,33 +1,41 @@
-import { createBrowserRouter, Outlet, Navigate } from "react-router-dom";
-import Login from "../pages/login.jsx";
-import Home from "../pages/Home.jsx";
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import Login from "../pages/Login.jsx";
+import Folders from "../pages/Folders.jsx";
+import Notes from "../pages/Notes.jsx";
+import Tags from "../pages/Tags.jsx";
+import Layout from "../components/layout/Layout.jsx"; // Import Layout
 import ProtectedRoute from "../components/ProtectedRoute.jsx";
-
-const AuthLayout = () => {
-  return <Outlet />;
-};
 
 export default createBrowserRouter([
   {
-    element: <AuthLayout />,
-    children: [
+    path: "/login",
+    element: <Login />,
+  },
+  {
+    path: "/",
+    element: (
+      <ProtectedRoute>
+        <Layout /> {/* Layout sẽ chứa các route con */}
+      </ProtectedRoute>
+    ),
+    children: [ // Thêm children routes
+      
       {
-        element: <Login />,
-        path: "/login",
+        path: "folders",
+        element: <Folders />,
       },
       {
-        element: (
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        ),
-        path: "/",
+        path: "notes",
+        element: <Notes />,
       },
       {
-        // Redirect mặc định
-        path: "*",
-        element: <Navigate to="/" replace />
-      }
+        path: "tags",
+        element: <Tags />,
+      },
     ],
+  },
+  {
+    path: "*",
+    element: <Navigate to="/" replace />,
   },
 ]);
