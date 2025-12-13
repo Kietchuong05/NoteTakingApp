@@ -1,598 +1,261 @@
-// Notes.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Typography,
-  IconButton,
-  Button,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
-  Tooltip,
-  CircularProgress,
-  Alert,
-  InputAdornment,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  Badge
+  Box, Grid, Card, CardContent, Typography, IconButton, Button,
+  TextField, InputAdornment, Chip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  FormControl, InputLabel, Select, MenuItem, Tooltip, OutlinedInput
 } from '@mui/material';
 import {
-  Note as NoteIcon,
-  Star as StarIcon,
-  StarBorder as StarBorderIcon,
-  Share as ShareIcon,
-  ShareOutlined as ShareOutlinedIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  Search as SearchIcon,
+  Add as AddIcon, Search as SearchIcon,
+  Edit as EditIcon, Delete as DeleteIcon,
   Folder as FolderIcon,
-  Label as LabelIcon,
-  AccessTime as AccessTimeIcon,
-  Visibility as VisibilityIcon,
-  MoreVert as MoreVertIcon
+  Star as StarIcon, StarBorder as StarBorderIcon,
+  RestoreFromTrash as RestoreIcon, DeleteForever as DeleteForeverIcon // Import Icon mới
 } from '@mui/icons-material';
-import { useNotes } from '../hooks/useNotes';
-import { useFolders } from '../hooks/useFolders';
+
+import { auth } from '../firebase/config';
+import { getNotes, createNote, updateNote, deleteNote, deleteNotePermanently, getFolders, getTags } from '../services/api';
 import { format } from 'date-fns';
 
 export default function Notes() {
-  const { notes, loading, addNote, updateNote, deleteNote, toggleStarNote, toggleShareNote, searchNotes } = useNotes();
-  const { folders } = useFolders();
+  const user = auth.currentUser;
+  const location = useLocation();
+
+  // --- KIỂM TRA TRANG HIỆN TẠI ---
+  const isStarredPage = location.pathname === '/starred';
+  const isTrashPage = location.pathname === '/trash'; // <--- NEW
+
+  const [notes, setNotes] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [openDialog, setOpenDialog] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFolder, setSelectedFolder] = useState('all');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
-  const [newNote, setNewNote] = useState({
-    title: '',
-    content: '',
-    folderId: '',
-    tags: []
-  });
+  const [formData, setFormData] = useState({ title: '', content: '', folderId: '', tagIds: [] });
 
-  const filteredNotes = searchQuery ? searchNotes(searchQuery) : notes;
-  
-  // Lọc theo thư mục
-  const notesByFolder = selectedFolder === 'all' 
-    ? filteredNotes 
-    : filteredNotes.filter(note => note.folderId === parseInt(selectedFolder));
+  // --- LẤY DỮ LIỆU ---
+  useEffect(() => {
+    const fetchData = async () => {
+      if (user?.uid) {
+        setLoading(true);
+        try {
+          // Nếu ở trang Trash -> Gọi API lấy danh sách đã xóa (isDeleted = true)
+          // Nếu trang khác -> Gọi API lấy danh sách chưa xóa (isDeleted = false)
+          const isDeleted = isTrashPage; 
 
-  // Lấy tên thư mục
-  const getFolderName = (folderId) => {
-    const folder = folders.find(f => f.id === folderId);
-    return folder ? folder.name : 'Không có thư mục';
-  };
+          const [notesData, foldersData, tagsData] = await Promise.all([
+            getNotes(user.uid, null, isDeleted), // <--- Truyền tham số isDeleted vào
+            getFolders(user.uid),
+            getTags(user.uid)
+          ]);
+          
+          const processedNotes = Array.isArray(notesData) ? notesData.map(n => ({ ...n, is_starred: n.is_starred || false })) : [];
+          setNotes(processedNotes);
+          if (Array.isArray(foldersData)) setFolders(foldersData);
+          if (Array.isArray(tagsData)) setTags(tagsData);
+        } catch (error) {
+          console.error("Lỗi:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    fetchData();
+  }, [user, isTrashPage]); // Chạy lại khi đổi sang trang Trash
 
-  // Lấy màu thư mục
-  const getFolderColor = (folderId) => {
-    const folder = folders.find(f => f.id === folderId);
-    return folder ? folder.color : '#64748b';
-  };
-
-  const handleOpenDialog = (note = null) => {
-    if (note) {
-      setEditingNote(note);
-      setNewNote({
-        title: note.title,
-        content: note.content,
-        folderId: note.folderId || '',
-        tags: note.tags || []
-      });
-    } else {
-      setEditingNote(null);
-      setNewNote({
-        title: '',
-        content: '',
-        folderId: folders.length > 0 ? folders[0].id : '',
-        tags: []
-      });
-    }
+  // --- CÁC HÀM XỬ LÝ ---
+  const handleOpenCreate = () => {
+    setEditingNote(null);
+    setFormData({ title: '', content: '', folderId: '', tagIds: [] });
     setOpenDialog(true);
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditingNote(null);
-    setNewNote({ title: '', content: '', folderId: '', tags: [] });
+  const handleOpenEdit = (note) => {
+    setEditingNote(note);
+    const currentTagIds = note.tags ? note.tags.map(t => t.id) : [];
+    setFormData({ title: note.title, content: note.content || '', folderId: note.folder_id || '', tagIds: currentTagIds });
+    setOpenDialog(true);
   };
 
-  const handleSubmit = () => {
-    if (!newNote.title.trim()) return;
+  const handleSave = async () => {
+    if (!formData.title.trim()) return alert("Tiêu đề không được để trống!");
+    try {
+      if (editingNote) {
+        const updated = await updateNote(editingNote.id, {
+          title: formData.title, content: formData.content, folder_id: formData.folderId || null, tag_ids: formData.tagIds
+        });
+        if (updated) {
+          setNotes(notes.map(n => (n.id === editingNote.id ? { ...updated, is_starred: n.is_starred } : n)));
+          setOpenDialog(false);
+        }
+      } else {
+        const created = await createNote(formData.title, formData.content, formData.folderId || null, formData.tagIds, user.uid);
+        if (created) {
+          setNotes([{ ...created, is_starred: false }, ...notes]);
+          setOpenDialog(false);
+        }
+      }
+    } catch (error) { alert("Lỗi!"); }
+  };
 
-    if (editingNote) {
-      updateNote(editingNote.id, newNote);
-    } else {
-      addNote(newNote);
+  // 1. Xóa tạm (Chuyển vào thùng rác)
+  const handleSoftDelete = async (id) => {
+    if (window.confirm("Chuyển ghi chú này vào thùng rác?")) {
+      const success = await deleteNote(id); // Gọi API xóa mềm
+      if (success) setNotes(notes.filter(n => n.id !== id));
     }
-    handleCloseDialog();
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa ghi chú này?')) {
-      deleteNote(id);
+  // 2. Xóa vĩnh viễn (Trong thùng rác)
+  const handleHardDelete = async (id) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa VĨNH VIỄN? Không thể khôi phục đâu nhé!")) {
+      const success = await deleteNotePermanently(id);
+      if (success) setNotes(notes.filter(n => n.id !== id));
     }
   };
 
-  const handleAddTag = (tag) => {
-    if (tag.trim() && !newNote.tags.includes(tag.trim())) {
-      setNewNote({ ...newNote, tags: [...newNote.tags, tag.trim()] });
+  // 3. Khôi phục (Trong thùng rác)
+  const handleRestore = async (id) => {
+    // Gọi API update để sửa is_deleted = false
+    const updated = await updateNote(id, { is_deleted: false });
+    if (updated) {
+      setNotes(notes.filter(n => n.id !== id)); // Biến mất khỏi thùng rác
+      alert("Đã khôi phục ghi chú!");
     }
   };
 
-  const handleRemoveTag = (tagToRemove) => {
-    setNewNote({
-      ...newNote,
-      tags: newNote.tags.filter(tag => tag !== tagToRemove)
-    });
+  const handleToggleStar = async (noteId) => {
+    const updatedNotes = notes.map(n => n.id === noteId ? { ...n, is_starred: !n.is_starred } : n);
+    setNotes(updatedNotes);
+    await updateNote(noteId, { is_starred: !notes.find(n => n.id === noteId).is_starred });
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  // --- LỌC ---
+  const filteredNotes = notes.filter(note => {
+    const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) || note.content?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStar = isStarredPage ? note.is_starred === true : true;
+    return matchesSearch && matchesStar;
+  });
 
-  // Thống kê
-  const totalNotes = notes.length;
-  const starredNotes = notes.filter(note => note.starred).length;
-  const sharedNotes = notes.filter(note => note.shared).length;
+  // Tiêu đề trang
+  let pageTitle = 'Tất cả Ghi chú';
+  if (isStarredPage) pageTitle = 'Ghi chú được gắn sao';
+  if (isTrashPage) pageTitle = 'Thùng rác';
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1e293b', mb: 1 }}>
-            Ghi chú
-          </Typography>
-          <Typography variant="body2" color="#64748b">
-            Tổng số: {totalNotes} • Gắn sao: {starredNotes} • Chia sẻ: {sharedNotes}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant={viewMode === 'grid' ? 'contained' : 'outlined'}
-            onClick={() => setViewMode('grid')}
-            size="small"
-          >
-            Lưới
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'contained' : 'outlined'}
-            onClick={() => setViewMode('list')}
-            size="small"
-          >
-            Danh sách
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-            sx={{
-              backgroundColor: '#3b82f6',
-              '&:hover': { backgroundColor: '#2563eb' }
-            }}
-          >
-            Ghi chú mới
-          </Button>
-        </Box>
+        <Typography variant="h4" sx={{ fontWeight: 'bold', color: isTrashPage ? '#ef4444' : '#1e293b' }}>
+          {pageTitle}
+        </Typography>
+        {/* Ẩn nút tạo mới khi ở Thùng rác */}
+        {!isTrashPage && !isStarredPage && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} sx={{ bgcolor: '#3b82f6' }}>Ghi chú mới</Button>
+        )}
       </Box>
 
-      {/* Search and Filter Bar */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
-        <TextField
-          fullWidth
-          placeholder="Tìm kiếm ghi chú..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: '#94a3b8' }} />
-              </InputAdornment>
-            ),
-          }}
-          sx={{
-            backgroundColor: 'white',
-            borderRadius: 2,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-            }
-          }}
-        />
-        
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Lọc theo thư mục</InputLabel>
-          <Select
-            value={selectedFolder}
-            onChange={(e) => setSelectedFolder(e.target.value)}
-            label="Lọc theo thư mục"
-            sx={{ borderRadius: 2 }}
-          >
-            <MenuItem value="all">Tất cả thư mục</MenuItem>
-            {folders.map((folder) => (
-              <MenuItem key={folder.id} value={folder.id}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: folder.color }} />
-                  {folder.name} ({folder.noteCount})
-                </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      <Box sx={{ mb: 4 }}>
+        <TextField fullWidth placeholder="Tìm kiếm..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon sx={{ color: '#94a3b8' }} /></InputAdornment>) }} sx={{ bgcolor: 'white', borderRadius: 2 }} />
       </Box>
 
-      {notesByFolder.length === 0 ? (
-        <Alert severity="info" sx={{ borderRadius: 2, mb: 3 }}>
-          {searchQuery || selectedFolder !== 'all' 
-            ? 'Không tìm thấy ghi chú phù hợp' 
-            : 'Chưa có ghi chú nào. Hãy tạo ghi chú đầu tiên!'}
-        </Alert>
-      ) : null}
+      <Grid container spacing={3}>
+        {filteredNotes.length === 0 && (
+            <Grid item xs={12}><Typography align="center" color="#94a3b8" sx={{ mt: 4 }}>Trống trơn!</Typography></Grid>
+        )}
 
-      {/* Notes Grid/List View */}
-      {viewMode === 'grid' ? (
-        <Grid container spacing={3}>
-          {notesByFolder.map((note) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={note.id}>
-              <Card
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: 3,
-                  borderTop: `4px solid ${getFolderColor(note.folderId)}`,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)'
-                  }
-                }}
-              >
-                <CardContent sx={{ flex: 1, p: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <Chip
-                        label={getFolderName(note.folderId)}
-                        size="small"
-                        sx={{
-                          backgroundColor: `${getFolderColor(note.folderId)}20`,
-                          color: getFolderColor(note.folderId),
-                          fontSize: '0.7rem',
-                          height: 24
-                        }}
-                      />
-                      {note.shared && (
-                        <Chip
-                          label="Chia sẻ"
-                          size="small"
-                          icon={<ShareIcon sx={{ fontSize: 14 }} />}
-                          sx={{
-                            backgroundColor: '#dbeafe',
-                            color: '#1d4ed8',
-                            fontSize: '0.7rem',
-                            height: 24
-                          }}
-                        />
-                      )}
-                    </Box>
-                    <IconButton
-                      onClick={() => toggleStarNote(note.id)}
-                      size="small"
-                      sx={{ color: note.starred ? '#f59e0b' : '#cbd5e1' }}
-                    >
-                      {note.starred ? <StarIcon /> : <StarBorderIcon />}
+        {filteredNotes.map((note) => (
+          <Grid item xs={12} sm={6} md={4} key={note.id}>
+            <Card sx={{ height: '100%', borderRadius: 3, display: 'flex', flexDirection: 'column', transition: '0.3s', '&:hover': { transform: 'translateY(-5px)', boxShadow: 3 }, opacity: isTrashPage ? 0.8 : 1 }}>
+              <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}>
+                  {/* Ở Thùng rác thì không cho bấm sao */}
+                  {!isTrashPage && (
+                    <IconButton size="small" onClick={() => handleToggleStar(note.id)} sx={{ ml: -1 }}>
+                      {note.is_starred ? <StarIcon sx={{ color: '#f59e0b' }} /> : <StarBorderIcon sx={{ color: '#94a3b8' }} />}
                     </IconButton>
-                  </Box>
-
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e293b', mb: 1 }}>
-                    {note.title}
-                  </Typography>
-
-                  <Typography
-                    variant="body2"
-                    color="#64748b"
-                    sx={{
-                      mb: 2,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {note.content.replace(/#/g, '').substring(0, 150)}...
-                  </Typography>
-
-                  {note.tags && note.tags.length > 0 && (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                      {note.tags.slice(0, 3).map((tag, index) => (
-                        <Chip
-                          key={index}
-                          label={tag}
-                          size="small"
-                          sx={{
-                            fontSize: '0.65rem',
-                            height: 20,
-                            backgroundColor: '#f1f5f9',
-                            color: '#64748b'
-                          }}
-                        />
-                      ))}
-                      {note.tags.length > 3 && (
-                        <Chip
-                          label={`+${note.tags.length - 3}`}
-                          size="small"
-                          sx={{
-                            fontSize: '0.65rem',
-                            height: 20,
-                            backgroundColor: '#f1f5f9',
-                            color: '#64748b'
-                          }}
-                        />
-                      )}
-                    </Box>
                   )}
-
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 'auto' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <AccessTimeIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
-                      <Typography variant="caption" color="#94a3b8">
-                        {format(new Date(note.updatedAt), 'dd/MM/yyyy')}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <VisibilityIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
-                      <Typography variant="caption" color="#94a3b8">
-                        {Math.ceil(note.content.length / 1000)}k
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-
-                <CardActions sx={{ p: 2, pt: 0, borderTop: '1px solid #e2e8f0' }}>
-                  <Tooltip title={note.shared ? "Đã chia sẻ" : "Chia sẻ"}>
-                    <IconButton
-                      onClick={() => toggleShareNote(note.id)}
-                      size="small"
-                      sx={{ color: note.shared ? '#3b82f6' : '#64748b' }}
-                    >
-                      {note.shared ? <ShareIcon /> : <ShareOutlinedIcon />}
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Chỉnh sửa">
-                    <IconButton
-                      onClick={() => handleOpenDialog(note)}
-                      size="small"
-                      sx={{ color: '#64748b' }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Xóa">
-                    <IconButton
-                      onClick={() => handleDelete(note.id)}
-                      size="small"
-                      sx={{ color: '#ef4444' }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      ) : (
-        // List View
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {notesByFolder.map((note) => (
-            <Card
-              key={note.id}
-              sx={{
-                borderRadius: 2,
-                borderLeft: `4px solid ${getFolderColor(note.folderId)}`,
-                '&:hover': {
-                  backgroundColor: '#f8fafc'
-                }
-              }}
-            >
-              <CardContent sx={{ p: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#1e293b' }}>
-                        {note.title}
-                      </Typography>
-                      {note.starred && (
-                        <StarIcon sx={{ fontSize: 16, color: '#f59e0b' }} />
-                      )}
-                      {note.shared && (
-                        <ShareIcon sx={{ fontSize: 16, color: '#3b82f6' }} />
-                      )}
-                    </Box>
-                    
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                      <Chip
-                        label={getFolderName(note.folderId)}
-                        size="small"
-                        sx={{
-                          backgroundColor: `${getFolderColor(note.folderId)}20`,
-                          color: getFolderColor(note.folderId),
-                          fontSize: '0.7rem',
-                          height: 20
-                        }}
-                      />
-                      
-                      <Typography
-                        variant="body2"
-                        color="#64748b"
-                        sx={{
-                          flex: 1,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}
-                      >
-                        {note.content.replace(/#/g, '').substring(0, 100)}...
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      {note.tags && note.tags.length > 0 && (
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          {note.tags.slice(0, 2).map((tag, index) => (
-                            <Chip
-                              key={index}
-                              label={tag}
-                              size="small"
-                              sx={{
-                                fontSize: '0.65rem',
-                                height: 20,
-                                backgroundColor: '#f1f5f9',
-                                color: '#64748b'
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      )}
-                      
-                      <Typography variant="caption" color="#94a3b8">
-                        {format(new Date(note.updatedAt), 'dd/MM/yyyy HH:mm')}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  
-                  <Box>
-                    <IconButton
-                      onClick={() => toggleStarNote(note.id)}
-                      size="small"
-                      sx={{ color: note.starred ? '#f59e0b' : '#cbd5e1' }}
-                    >
-                      {note.starred ? <StarIcon /> : <StarBorderIcon />}
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleOpenDialog(note)}
-                      size="small"
-                      sx={{ color: '#64748b' }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleDelete(note.id)}
-                      size="small"
-                      sx={{ color: '#ef4444' }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
+                  <Typography variant="h6" fontWeight="bold" noWrap sx={{textDecoration: isTrashPage ? 'line-through' : 'none'}}>{note.title}</Typography>
                 </Box>
+
+                <Typography variant="body2" color="#64748b" sx={{ mb: 2, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '40px' }}>
+                  {note.content || "Không có nội dung"}
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 2, mt: 'auto' }}>
+                  {note.tags && note.tags.slice(0, 3).map(tag => (
+                    <Chip key={tag.id} label={tag.name} size="small" sx={{ bgcolor: tag.color || '#cbd5e1', color: '#fff', fontSize: '10px', height: 22, fontWeight: 'bold' }} />
+                  ))}
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 2, borderTop: '1px solid #f1f5f9' }}>
+                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {note.folder ? <Chip icon={<FolderIcon style={{ fontSize: 14 }} />} label={note.folder.name} size="small" sx={{ bgcolor: '#eff6ff', color: '#3b82f6', fontSize: 11 }} /> : <Typography variant="caption" color="#94a3b8">Chưa phân loại</Typography>}
+                   </Box>
+
+                   {/* --- LOGIC NÚT BẤM (QUAN TRỌNG) --- */}
+                   <Box>
+                      {isTrashPage ? (
+                        // GIAO DIỆN THÙNG RÁC: Khôi phục & Xóa vĩnh viễn
+                        <>
+                            <Tooltip title="Khôi phục">
+                                <IconButton size="small" onClick={() => handleRestore(note.id)} sx={{ color: '#10b981' }}><RestoreIcon fontSize="small" /></IconButton>
+                            </Tooltip>
+                            <Tooltip title="Xóa vĩnh viễn">
+                                <IconButton size="small" onClick={() => handleHardDelete(note.id)} sx={{ color: '#ef4444' }}><DeleteForeverIcon fontSize="small" /></IconButton>
+                            </Tooltip>
+                        </>
+                      ) : (
+                        // GIAO DIỆN THƯỜNG: Sửa & Xóa mềm
+                        <>
+                            <Tooltip title="Sửa">
+                                <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ color: '#64748b' }}><EditIcon fontSize="small" /></IconButton>
+                            </Tooltip>
+                            <Tooltip title="Xóa">
+                                <IconButton size="small" onClick={() => handleSoftDelete(note.id)} sx={{ color: '#ef4444' }}><DeleteIcon fontSize="small" /></IconButton>
+                            </Tooltip>
+                        </>
+                      )}
+                   </Box>
+                </Box>
+
               </CardContent>
             </Card>
-          ))}
-        </Box>
+          </Grid>
+        ))}
+      </Grid>
+      
+      {/* Dialog giữ nguyên (nhưng nhớ thêm điều kiện !isTrashPage để không hiện dialog nếu lỡ tay) */}
+      {!isTrashPage && (
+        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth maxWidth="sm">
+            {/* ... Nội dung Dialog cũ ... */}
+             <DialogTitle>{editingNote ? 'Chỉnh sửa ghi chú' : 'Tạo ghi chú mới'}</DialogTitle>
+             <DialogContent>
+                 <TextField autoFocus margin="dense" label="Tiêu đề" fullWidth value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} sx={{ mb: 2, mt: 1 }} />
+                 <TextField margin="dense" label="Nội dung" fullWidth multiline rows={4} value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} sx={{ mb: 2 }} />
+                 <FormControl fullWidth margin="dense" sx={{ mb: 2 }}>
+                    <InputLabel>Chọn thư mục</InputLabel>
+                    <Select value={formData.folderId} label="Chọn thư mục" onChange={(e) => setFormData({ ...formData, folderId: e.target.value })}>
+                    <MenuItem value=""><em>Không chọn</em></MenuItem>
+                    {folders.map(f => (<MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>))}
+                    </Select>
+                 </FormControl>
+                 <FormControl fullWidth margin="dense">
+                    <InputLabel>Gắn thẻ (Tags)</InputLabel>
+                    <Select multiple value={formData.tagIds} onChange={(e) => { const { target: { value } } = e; setFormData({ ...formData, tagIds: typeof value === 'string' ? value.split(',') : value }); }} input={<OutlinedInput label="Gắn thẻ (Tags)" />} renderValue={(selectedIds) => (<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{selectedIds.map((id) => { const tag = tags.find(t => t.id === id); return tag ? <Chip key={id} label={tag.name} size="small" sx={{ bgcolor: tag.color, color: '#fff' }} /> : null; })}</Box>)}>
+                    {tags.map((tag) => (<MenuItem key={tag.id} value={tag.id}>{tag.name}</MenuItem>))}
+                    </Select>
+                 </FormControl>
+             </DialogContent>
+             <DialogActions>
+                 <Button onClick={() => setOpenDialog(false)}>Hủy</Button>
+                 <Button variant="contained" onClick={handleSave}>{editingNote ? 'Cập nhật' : 'Tạo mới'}</Button>
+             </DialogActions>
+        </Dialog>
       )}
-
-      {/* Add/Edit Note Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingNote ? 'Chỉnh sửa ghi chú' : 'Ghi chú mới'}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Tiêu đề"
-            fullWidth
-            value={newNote.title}
-            onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
-            sx={{ mb: 3 }}
-          />
-          
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel>Thư mục</InputLabel>
-            <Select
-              value={newNote.folderId}
-              onChange={(e) => setNewNote({ ...newNote, folderId: e.target.value })}
-              label="Thư mục"
-            >
-              {folders.map((folder) => (
-                <MenuItem key={folder.id} value={folder.id}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: folder.color }} />
-                    {folder.name}
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <TextField
-            margin="dense"
-            label="Nội dung"
-            fullWidth
-            multiline
-            rows={10}
-            value={newNote.content}
-            onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
-            sx={{ mb: 3 }}
-            placeholder="Nhập nội dung ghi chú của bạn..."
-          />
-
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1, color: '#64748b' }}>
-              Thẻ
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-              {newNote.tags.map((tag, index) => (
-                <Chip
-                  key={index}
-                  label={tag}
-                  onDelete={() => handleRemoveTag(tag)}
-                  size="small"
-                />
-              ))}
-            </Box>
-            <TextField
-              size="small"
-              placeholder="Nhập thẻ và nhấn Enter..."
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleAddTag(e.target.value);
-                  e.target.value = '';
-                }
-              }}
-              sx={{ width: 200 }}
-            />
-            <Typography variant="caption" color="#64748b" sx={{ ml: 2 }}>
-              Nhấn Enter để thêm thẻ
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Hủy</Button>
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            disabled={!newNote.title.trim()}
-          >
-            {editingNote ? 'Cập nhật' : 'Lưu'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

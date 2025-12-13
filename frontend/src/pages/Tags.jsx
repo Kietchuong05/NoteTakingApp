@@ -1,54 +1,39 @@
 // Tags.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  IconButton,
-  Button,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
-  Tooltip,
-  CircularProgress,
-  Alert,
-  InputAdornment,
-  Avatar,
-  Badge,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel
+  Box, Grid, Card, CardContent, Typography, IconButton, Button,
+  TextField, Dialog, DialogTitle, DialogContent, DialogActions,
+  Chip, Tooltip, CircularProgress, Alert, InputAdornment,
+  Avatar, Badge, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import {
-  Label as LabelIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  Search as SearchIcon,
-  Note as NoteIcon,
-  Star as StarIcon,
-  StarBorder as StarBorderIcon,
-  AccessTime as AccessTimeIcon,
-  ColorLens as ColorLensIcon,
-  Sort as SortIcon
+  Label as LabelIcon, Edit as EditIcon, Delete as DeleteIcon,
+  Add as AddIcon, Search as SearchIcon, Note as NoteIcon,
+  Star as StarIcon, StarBorder as StarBorderIcon,
+  ColorLens as ColorLensIcon, Sort as SortIcon
 } from '@mui/icons-material';
-import { useTags } from '../hooks/useTags';
-import { useNotes } from '../hooks/useNotes';
+
+// Import Hooks và API
+import { useNotes } from '../hooks/useNotes'; // Giữ lại cái này để lấy danh sách ghi chú
 import { format } from 'date-fns';
+import { auth } from '../firebase/config';
+import { getTags, createTag } from '../services/api'; // Import API của chúng ta
 
 export default function Tags() {
-  const { tags, loading, addTag, updateTag, deleteTag, toggleStarTag } = useTags();
-  const { notes } = useNotes();
+  // --- 1. STATE QUẢN LÝ DỮ LIỆU ---
+  const [tags, setTags] = useState([]); // Danh sách thẻ thật
+  const [loading, setLoading] = useState(true);
+  
+  // Lấy danh sách note để đếm số lượng (nếu useNotes chưa chạy thì mặc định rỗng)
+  const { notes = [] } = useNotes(); 
+  const user = auth.currentUser;
+
+  // --- 2. STATE GIAO DIỆN ---
   const [openDialog, setOpenDialog] = useState(false);
   const [editingTag, setEditingTag] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('count'); // 'count', 'name', 'date'
+  const [sortBy, setSortBy] = useState('count');
+  
   const [newTag, setNewTag] = useState({
     name: '',
     color: '#3b82f6',
@@ -56,39 +41,50 @@ export default function Tags() {
   });
 
   const colors = [
-    '#3b82f6', // blue
-    '#10b981', // green
-    '#f59e0b', // orange
-    '#8b5cf6', // purple
-    '#ef4444', // red
-    '#06b6d4', // cyan
-    '#ec4899', // pink
-    '#84cc16', // lime
-    '#f97316', // orange-500
-    '#6366f1', // indigo
+    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444',
+    '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
   ];
 
+  // --- 3. GỌI API LẤY DANH SÁCH THẺ ---
+  useEffect(() => {
+    const fetchTags = async () => {
+      if (user?.uid) {
+        setLoading(true);
+        try {
+          const data = await getTags(user.uid);
+          if (Array.isArray(data)) {
+            setTags(data);
+          }
+        } catch (error) {
+          console.error("Lỗi tải tags:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    fetchTags();
+  }, [user]);
+
+  // Helper lọc ghi chú theo thẻ
   const getNotesWithTag = (tagName) => {
+    if (!notes) return [];
     return notes.filter(note => 
       note.tags?.some(tag => tag.toLowerCase() === tagName.toLowerCase())
     );
   };
 
+  // --- 4. XỬ LÝ MỞ/ĐÓNG DIALOG ---
   const handleOpenDialog = (tag = null) => {
     if (tag) {
       setEditingTag(tag);
       setNewTag({
         name: tag.name,
-        color: tag.color,
+        color: tag.color || '#3b82f6',
         description: tag.description || ''
       });
     } else {
       setEditingTag(null);
-      setNewTag({
-        name: '',
-        color: '#3b82f6',
-        description: ''
-      });
+      setNewTag({ name: '', color: '#3b82f6', description: '' });
     }
     setOpenDialog(true);
   };
@@ -99,49 +95,61 @@ export default function Tags() {
     setNewTag({ name: '', color: '#3b82f6', description: '' });
   };
 
-  const handleSubmit = () => {
+  // --- 5. XỬ LÝ TẠO/SỬA THẺ (QUAN TRỌNG NHẤT) ---
+  const handleSubmit = async () => {
     if (!newTag.name.trim()) return;
+    if (!user?.uid) return alert("Vui lòng đăng nhập!");
 
     if (editingTag) {
-      updateTag(editingTag.id, newTag);
+      // --- LOGIC SỬA (Chưa có API Update, tạm thời alert) ---
+      alert("Tính năng sửa đang cập nhật Backend!");
+      // Sau này gọi updateTag(editingTag.id, ...)
     } else {
-      addTag(newTag);
+      // --- LOGIC TẠO MỚI (GỌI API THẬT) ---
+      try {
+        const createdTag = await createTag(newTag.name, newTag.color, user.uid);
+        
+        if (createdTag) {
+          setTags([...tags, createdTag]); // Cập nhật giao diện ngay lập tức
+          handleCloseDialog();
+          // alert("Tạo thẻ thành công!"); // Có thể bỏ alert nếu thấy phiền
+        }
+      } catch (error) {
+        alert("Lỗi khi tạo thẻ!");
+      }
     }
-    handleCloseDialog();
   };
 
+  // --- 6. XỬ LÝ XÓA & SAO (Tạm thời placeholder) ---
   const handleDelete = (id, tagName) => {
-    const notesWithTag = getNotesWithTag(tagName);
-    if (notesWithTag.length > 0) {
-      if (window.confirm(`Thẻ này đang được sử dụng trong ${notesWithTag.length} ghi chú. Bạn vẫn muốn xóa?`)) {
-        deleteTag(id);
-      }
-    } else {
-      if (window.confirm('Bạn có chắc chắn muốn xóa thẻ này?')) {
-        deleteTag(id);
-      }
+    // const notesWithTag = getNotesWithTag(tagName);
+    if (window.confirm('Bạn muốn xóa thẻ này? (Backend chưa hỗ trợ xóa nhé)')) {
+       // Gọi API deleteTag ở đây sau này
+       alert("Đã gửi lệnh xóa (Fake)");
+       setTags(tags.filter(t => t.id !== id)); // Xóa tạm trên giao diện
     }
   };
 
+  const toggleStarTag = (id) => {
+      // Gọi API toggle star sau này
+      console.log("Toggle star:", id);
+  };
+
+  // --- 7. LOGIC LỌC VÀ SẮP XẾP ---
   const filteredTags = tags.filter(tag =>
     tag.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     tag.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Sắp xếp tags
   const sortedTags = [...filteredTags].sort((a, b) => {
     const notesA = getNotesWithTag(a.name).length;
     const notesB = getNotesWithTag(b.name).length;
     
     switch (sortBy) {
-      case 'count':
-        return notesB - notesA; // Giảm dần
-      case 'name':
-        return a.name.localeCompare(b.name);
-      case 'starred':
-        return (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
-      default:
-        return 0;
+      case 'count': return notesB - notesA;
+      case 'name': return a.name.localeCompare(b.name);
+      case 'starred': return (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
+      default: return 0;
     }
   });
 
@@ -197,13 +205,7 @@ export default function Tags() {
               </InputAdornment>
             ),
           }}
-          sx={{
-            backgroundColor: 'white',
-            borderRadius: 2,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-            }
-          }}
+          sx={{ backgroundColor: 'white', borderRadius: 2 }}
         />
         
         <FormControl sx={{ minWidth: 150 }}>
@@ -223,7 +225,7 @@ export default function Tags() {
       </Box>
 
       {/* Thống kê nhanh */}
-      {mostUsedTag && (
+      {mostUsedTag && tags.length > 0 && (
         <Card sx={{ mb: 3, backgroundColor: '#f8fafc', borderRadius: 2 }}>
           <CardContent sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -269,130 +271,50 @@ export default function Tags() {
                   display: 'flex',
                   flexDirection: 'column',
                   borderRadius: 3,
-                  borderTop: `4px solid ${tag.color}`,
+                  borderTop: `4px solid ${tag.color || '#ccc'}`,
                   boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)'
-                  }
+                  transition: 'transform 0.2s',
+                  '&:hover': { transform: 'translateY(-4px)' }
                 }}
               >
                 <CardContent sx={{ flex: 1, p: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar
-                        sx={{
-                          backgroundColor: `${tag.color}20`,
-                          color: tag.color,
-                          width: 48,
-                          height: 48
-                        }}
-                      >
+                      <Avatar sx={{ bgcolor: `${tag.color}20`, color: tag.color, width: 48, height: 48 }}>
                         <LabelIcon />
                       </Avatar>
                       <Box>
                         <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e293b' }}>
                           {tag.name}
                         </Typography>
-                        <Badge
-                          badgeContent={notesWithTag.length}
-                          color="primary"
-                          sx={{
-                            '& .MuiBadge-badge': {
-                              backgroundColor: tag.color,
-                              fontSize: '0.7rem',
-                              height: 20,
-                              minWidth: 20
-                            }
-                          }}
-                        >
-                          <Typography variant="caption" color="#64748b">
-                            ghi chú
-                          </Typography>
+                        <Badge badgeContent={notesWithTag.length} color="primary"
+                          sx={{ '& .MuiBadge-badge': { backgroundColor: tag.color } }}>
+                          <Typography variant="caption" color="#64748b">ghi chú</Typography>
                         </Badge>
                       </Box>
                     </Box>
-                    <IconButton
-                      onClick={() => toggleStarTag(tag.id)}
-                      size="small"
-                      sx={{ color: tag.starred ? '#f59e0b' : '#cbd5e1' }}
-                    >
-                      {tag.starred ? <StarIcon /> : <StarBorderIcon />}
+                    <IconButton size="small" onClick={() => toggleStarTag(tag.id)}>
+                      {tag.starred ? <StarIcon sx={{color: '#f59e0b'}}/> : <StarBorderIcon />}
                     </IconButton>
                   </Box>
 
                   {tag.description && (
-                    <Typography
-                      variant="body2"
-                      color="#64748b"
-                      sx={{
-                        mb: 2,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      }}
-                    >
+                    <Typography variant="body2" color="#64748b" sx={{ mb: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {tag.description}
                     </Typography>
-                  )}
-
-                  {/* Hiển thị 2 note gần đây với tag này */}
-                  {notesWithTag.length > 0 && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="caption" color="#64748b" sx={{ display: 'block', mb: 1 }}>
-                        Ghi chú gần đây:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {notesWithTag.slice(0, 2).map((note) => (
-                          <Box
-                            key={note.id}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1,
-                              p: 1,
-                              borderRadius: 1,
-                              backgroundColor: '#f8fafc',
-                              cursor: 'pointer',
-                              '&:hover': {
-                                backgroundColor: '#f1f5f9'
-                              }
-                            }}
-                          >
-                            <NoteIcon sx={{ fontSize: 16, color: tag.color }} />
-                            <Typography variant="caption" sx={{ flex: 1 }}>
-                              {note.title}
-                            </Typography>
-                          </Box>
-                        ))}
-                        {notesWithTag.length > 2 && (
-                          <Typography variant="caption" color="#64748b" sx={{ textAlign: 'center' }}>
-                            +{notesWithTag.length - 2} ghi chú khác
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
                   )}
 
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 'auto', pt: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <ColorLensIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
-                      <Box
-                        sx={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: '50%',
-                          backgroundColor: tag.color,
-                          border: '1px solid #e2e8f0'
-                        }}
-                      />
+                      <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: tag.color, border: '1px solid #e2e8f0' }} />
                     </Box>
-                    {tag.createdAt && (
-                      <Typography variant="caption" color="#94a3b8">
-                        {format(new Date(tag.createdAt), 'dd/MM/yyyy')}
-                      </Typography>
+                    {/* Nếu có ngày tạo thì hiển thị, không thì thôi */}
+                    {tag.created_at && (
+                        <Typography variant="caption" color="#94a3b8">
+                         {/* format(new Date(tag.created_at), 'dd/MM/yyyy')  <-- Cần check kĩ format backend trả về */}
+                         Mới tạo
+                        </Typography>
                     )}
                   </Box>
                 </CardContent>
@@ -401,38 +323,13 @@ export default function Tags() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Tooltip title="Chỉnh sửa">
-                        <IconButton
-                          onClick={() => handleOpenDialog(tag)}
-                          size="small"
-                          sx={{ color: '#64748b' }}
-                        >
-                          <EditIcon />
-                        </IconButton>
+                        <IconButton onClick={() => handleOpenDialog(tag)} size="small" sx={{ color: '#64748b' }}><EditIcon /></IconButton>
                       </Tooltip>
                       <Tooltip title="Xóa">
-                        <IconButton
-                          onClick={() => handleDelete(tag.id, tag.name)}
-                          size="small"
-                          sx={{ color: '#ef4444' }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                        <IconButton onClick={() => handleDelete(tag.id, tag.name)} size="small" sx={{ color: '#ef4444' }}><DeleteIcon /></IconButton>
                       </Tooltip>
                     </Box>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      sx={{
-                        fontSize: '0.75rem',
-                        textTransform: 'none',
-                        borderColor: tag.color,
-                        color: tag.color,
-                        '&:hover': {
-                          backgroundColor: `${tag.color}10`,
-                          borderColor: tag.color
-                        }
-                      }}
-                    >
+                    <Button size="small" variant="outlined" sx={{ fontSize: '0.75rem', textTransform: 'none', borderColor: tag.color, color: tag.color }}>
                       Xem tất cả ({notesWithTag.length})
                     </Button>
                   </Box>
@@ -445,52 +342,32 @@ export default function Tags() {
 
       {/* Add/Edit Tag Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingTag ? 'Chỉnh sửa thẻ' : 'Thẻ mới'}
-        </DialogTitle>
+        <DialogTitle>{editingTag ? 'Chỉnh sửa thẻ' : 'Thẻ mới'}</DialogTitle>
         <DialogContent>
           <TextField
-            autoFocus
-            margin="dense"
-            label="Tên thẻ"
-            fullWidth
+            autoFocus margin="dense" label="Tên thẻ" fullWidth
             value={newTag.name}
             onChange={(e) => setNewTag({ ...newTag, name: e.target.value })}
-            sx={{ mb: 3 }}
-            helperText="Tên thẻ nên ngắn gọn và dễ nhớ"
+            sx={{ mb: 3 }} helperText="Tên thẻ nên ngắn gọn và dễ nhớ"
           />
           
           <TextField
-            margin="dense"
-            label="Mô tả"
-            fullWidth
-            multiline
-            rows={2}
+            margin="dense" label="Mô tả" fullWidth multiline rows={2}
             value={newTag.description}
             onChange={(e) => setNewTag({ ...newTag, description: e.target.value })}
-            sx={{ mb: 3 }}
-            helperText="Mô tả ngắn về mục đích sử dụng của thẻ"
+            sx={{ mb: 3 }} helperText="Mô tả ngắn về mục đích sử dụng của thẻ"
           />
           
-          <Typography variant="subtitle2" sx={{ mb: 1, color: '#64748b' }}>
-            Chọn màu:
-          </Typography>
+          <Typography variant="subtitle2" sx={{ mb: 1, color: '#64748b' }}>Chọn màu:</Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
             {colors.map((color) => (
               <Tooltip key={color} title={color} arrow>
                 <Box
                   onClick={() => setNewTag({ ...newTag, color })}
                   sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    backgroundColor: color,
-                    cursor: 'pointer',
+                    width: 36, height: 36, borderRadius: '50%', backgroundColor: color, cursor: 'pointer',
                     border: newTag.color === color ? '3px solid #1e293b' : '2px solid transparent',
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.1)'
-                    }
+                    transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.1)' }
                   }}
                 />
               </Tooltip>
@@ -499,18 +376,8 @@ export default function Tags() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Hủy</Button>
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            disabled={!newTag.name.trim()}
-            sx={{
-              backgroundColor: newTag.color,
-              '&:hover': {
-                backgroundColor: newTag.color,
-                opacity: 0.9
-              }
-            }}
-          >
+          <Button onClick={handleSubmit} variant="contained" disabled={!newTag.name.trim()}
+            sx={{ backgroundColor: newTag.color, '&:hover': { backgroundColor: newTag.color, opacity: 0.9 } }}>
             {editingTag ? 'Cập nhật' : 'Tạo mới'}
           </Button>
         </DialogActions>
