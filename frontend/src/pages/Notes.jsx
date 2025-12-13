@@ -11,7 +11,7 @@ import {
   Edit as EditIcon, Delete as DeleteIcon,
   Folder as FolderIcon,
   Star as StarIcon, StarBorder as StarBorderIcon,
-  RestoreFromTrash as RestoreIcon, DeleteForever as DeleteForeverIcon // Import Icon mới
+  RestoreFromTrash as RestoreIcon, DeleteForever as DeleteForeverIcon
 } from '@mui/icons-material';
 
 import { auth } from '../firebase/config';
@@ -22,9 +22,9 @@ export default function Notes() {
   const user = auth.currentUser;
   const location = useLocation();
 
-  // --- KIỂM TRA TRANG HIỆN TẠI ---
+
   const isStarredPage = location.pathname === '/starred';
-  const isTrashPage = location.pathname === '/trash'; // <--- NEW
+  const isTrashPage = location.pathname === '/trash';
 
   const [notes, setNotes] = useState([]);
   const [folders, setFolders] = useState([]);
@@ -36,18 +36,16 @@ export default function Notes() {
   const [editingNote, setEditingNote] = useState(null);
   const [formData, setFormData] = useState({ title: '', content: '', folderId: '', tagIds: [] });
 
-  // --- LẤY DỮ LIỆU ---
+ 
   useEffect(() => {
     const fetchData = async () => {
       if (user?.uid) {
         setLoading(true);
         try {
-          // Nếu ở trang Trash -> Gọi API lấy danh sách đã xóa (isDeleted = true)
-          // Nếu trang khác -> Gọi API lấy danh sách chưa xóa (isDeleted = false)
           const isDeleted = isTrashPage; 
 
           const [notesData, foldersData, tagsData] = await Promise.all([
-            getNotes(user.uid, null, isDeleted), // <--- Truyền tham số isDeleted vào
+            getNotes(user.uid, null, isDeleted),
             getFolders(user.uid),
             getTags(user.uid)
           ]);
@@ -64,9 +62,9 @@ export default function Notes() {
       }
     };
     fetchData();
-  }, [user, isTrashPage]); // Chạy lại khi đổi sang trang Trash
+  }, [user, isTrashPage]);
 
-  // --- CÁC HÀM XỬ LÝ ---
+
   const handleOpenCreate = () => {
     setEditingNote(null);
     setFormData({ title: '', content: '', folderId: '', tagIds: [] });
@@ -101,15 +99,15 @@ export default function Notes() {
     } catch (error) { alert("Lỗi!"); }
   };
 
-  // 1. Xóa tạm (Chuyển vào thùng rác)
+
   const handleSoftDelete = async (id) => {
     if (window.confirm("Chuyển ghi chú này vào thùng rác?")) {
-      const success = await deleteNote(id); // Gọi API xóa mềm
+      const success = await deleteNote(id);
       if (success) setNotes(notes.filter(n => n.id !== id));
     }
   };
 
-  // 2. Xóa vĩnh viễn (Trong thùng rác)
+
   const handleHardDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa VĨNH VIỄN? Không thể khôi phục đâu nhé!")) {
       const success = await deleteNotePermanently(id);
@@ -117,12 +115,12 @@ export default function Notes() {
     }
   };
 
-  // 3. Khôi phục (Trong thùng rác)
+
   const handleRestore = async (id) => {
-    // Gọi API update để sửa is_deleted = false
+
     const updated = await updateNote(id, { is_deleted: false });
     if (updated) {
-      setNotes(notes.filter(n => n.id !== id)); // Biến mất khỏi thùng rác
+      setNotes(notes.filter(n => n.id !== id));
       alert("Đã khôi phục ghi chú!");
     }
   };
@@ -133,14 +131,14 @@ export default function Notes() {
     await updateNote(noteId, { is_starred: !notes.find(n => n.id === noteId).is_starred });
   };
 
-  // --- LỌC ---
+
   const filteredNotes = notes.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) || note.content?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStar = isStarredPage ? note.is_starred === true : true;
     return matchesSearch && matchesStar;
   });
 
-  // Tiêu đề trang
+
   let pageTitle = 'Tất cả Ghi chú';
   if (isStarredPage) pageTitle = 'Ghi chú được gắn sao';
   if (isTrashPage) pageTitle = 'Thùng rác';
@@ -151,7 +149,6 @@ export default function Notes() {
         <Typography variant="h4" sx={{ fontWeight: 'bold', color: isTrashPage ? '#ef4444' : '#1e293b' }}>
           {pageTitle}
         </Typography>
-        {/* Ẩn nút tạo mới khi ở Thùng rác */}
         {!isTrashPage && !isStarredPage && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate} sx={{ bgcolor: '#3b82f6' }}>Ghi chú mới</Button>
         )}
@@ -172,7 +169,6 @@ export default function Notes() {
               <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}>
-                  {/* Ở Thùng rác thì không cho bấm sao */}
                   {!isTrashPage && (
                     <IconButton size="small" onClick={() => handleToggleStar(note.id)} sx={{ ml: -1 }}>
                       {note.is_starred ? <StarIcon sx={{ color: '#f59e0b' }} /> : <StarBorderIcon sx={{ color: '#94a3b8' }} />}
@@ -196,10 +192,8 @@ export default function Notes() {
                         {note.folder ? <Chip icon={<FolderIcon style={{ fontSize: 14 }} />} label={note.folder.name} size="small" sx={{ bgcolor: '#eff6ff', color: '#3b82f6', fontSize: 11 }} /> : <Typography variant="caption" color="#94a3b8">Chưa phân loại</Typography>}
                    </Box>
 
-                   {/* --- LOGIC NÚT BẤM (QUAN TRỌNG) --- */}
                    <Box>
                       {isTrashPage ? (
-                        // GIAO DIỆN THÙNG RÁC: Khôi phục & Xóa vĩnh viễn
                         <>
                             <Tooltip title="Khôi phục">
                                 <IconButton size="small" onClick={() => handleRestore(note.id)} sx={{ color: '#10b981' }}><RestoreIcon fontSize="small" /></IconButton>
@@ -209,7 +203,6 @@ export default function Notes() {
                             </Tooltip>
                         </>
                       ) : (
-                        // GIAO DIỆN THƯỜNG: Sửa & Xóa mềm
                         <>
                             <Tooltip title="Sửa">
                                 <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ color: '#64748b' }}><EditIcon fontSize="small" /></IconButton>
@@ -228,10 +221,8 @@ export default function Notes() {
         ))}
       </Grid>
       
-      {/* Dialog giữ nguyên (nhưng nhớ thêm điều kiện !isTrashPage để không hiện dialog nếu lỡ tay) */}
       {!isTrashPage && (
         <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth maxWidth="sm">
-            {/* ... Nội dung Dialog cũ ... */}
              <DialogTitle>{editingNote ? 'Chỉnh sửa ghi chú' : 'Tạo ghi chú mới'}</DialogTitle>
              <DialogContent>
                  <TextField autoFocus margin="dense" label="Tiêu đề" fullWidth value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} sx={{ mb: 2, mt: 1 }} />

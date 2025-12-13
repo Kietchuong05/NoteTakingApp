@@ -13,22 +13,19 @@ import {
   ColorLens as ColorLensIcon, Sort as SortIcon
 } from '@mui/icons-material';
 
-// Import Hooks và API
-import { useNotes } from '../hooks/useNotes'; // Giữ lại cái này để lấy danh sách ghi chú
+import { useNotes } from '../hooks/useNotes';
 import { format } from 'date-fns';
 import { auth } from '../firebase/config';
-import { getTags, createTag } from '../services/api'; // Import API của chúng ta
+import { getTags, createTag } from '../services/api';
 
 export default function Tags() {
-  // --- 1. STATE QUẢN LÝ DỮ LIỆU ---
-  const [tags, setTags] = useState([]); // Danh sách thẻ thật
+
+  const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Lấy danh sách note để đếm số lượng (nếu useNotes chưa chạy thì mặc định rỗng)
   const { notes = [] } = useNotes(); 
   const user = auth.currentUser;
 
-  // --- 2. STATE GIAO DIỆN ---
   const [openDialog, setOpenDialog] = useState(false);
   const [editingTag, setEditingTag] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,7 +42,7 @@ export default function Tags() {
     '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
   ];
 
-  // --- 3. GỌI API LẤY DANH SÁCH THẺ ---
+
   useEffect(() => {
     const fetchTags = async () => {
       if (user?.uid) {
@@ -65,7 +62,6 @@ export default function Tags() {
     fetchTags();
   }, [user]);
 
-  // Helper lọc ghi chú theo thẻ
   const getNotesWithTag = (tagName) => {
     if (!notes) return [];
     return notes.filter(note => 
@@ -73,7 +69,6 @@ export default function Tags() {
     );
   };
 
-  // --- 4. XỬ LÝ MỞ/ĐÓNG DIALOG ---
   const handleOpenDialog = (tag = null) => {
     if (tag) {
       setEditingTag(tag);
@@ -95,24 +90,19 @@ export default function Tags() {
     setNewTag({ name: '', color: '#3b82f6', description: '' });
   };
 
-  // --- 5. XỬ LÝ TẠO/SỬA THẺ (QUAN TRỌNG NHẤT) ---
   const handleSubmit = async () => {
     if (!newTag.name.trim()) return;
     if (!user?.uid) return alert("Vui lòng đăng nhập!");
 
     if (editingTag) {
-      // --- LOGIC SỬA (Chưa có API Update, tạm thời alert) ---
       alert("Tính năng sửa đang cập nhật Backend!");
-      // Sau này gọi updateTag(editingTag.id, ...)
     } else {
-      // --- LOGIC TẠO MỚI (GỌI API THẬT) ---
       try {
         const createdTag = await createTag(newTag.name, newTag.color, user.uid);
         
         if (createdTag) {
-          setTags([...tags, createdTag]); // Cập nhật giao diện ngay lập tức
+          setTags([...tags, createdTag]);
           handleCloseDialog();
-          // alert("Tạo thẻ thành công!"); // Có thể bỏ alert nếu thấy phiền
         }
       } catch (error) {
         alert("Lỗi khi tạo thẻ!");
@@ -120,22 +110,22 @@ export default function Tags() {
     }
   };
 
-  // --- 6. XỬ LÝ XÓA & SAO (Tạm thời placeholder) ---
+
   const handleDelete = (id, tagName) => {
-    // const notesWithTag = getNotesWithTag(tagName);
+
     if (window.confirm('Bạn muốn xóa thẻ này? (Backend chưa hỗ trợ xóa nhé)')) {
-       // Gọi API deleteTag ở đây sau này
+
        alert("Đã gửi lệnh xóa (Fake)");
-       setTags(tags.filter(t => t.id !== id)); // Xóa tạm trên giao diện
+       setTags(tags.filter(t => t.id !== id));
     }
   };
 
   const toggleStarTag = (id) => {
-      // Gọi API toggle star sau này
+
       console.log("Toggle star:", id);
   };
 
-  // --- 7. LOGIC LỌC VÀ SẮP XẾP ---
+
   const filteredTags = tags.filter(tag =>
     tag.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     tag.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -168,7 +158,6 @@ export default function Tags() {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1e293b', mb: 1 }}>
@@ -191,7 +180,6 @@ export default function Tags() {
         </Button>
       </Box>
 
-      {/* Search and Sort Bar */}
       <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
         <TextField
           fullWidth
@@ -224,7 +212,7 @@ export default function Tags() {
         </FormControl>
       </Box>
 
-      {/* Thống kê nhanh */}
+
       {mostUsedTag && tags.length > 0 && (
         <Card sx={{ mb: 3, backgroundColor: '#f8fafc', borderRadius: 2 }}>
           <CardContent sx={{ p: 2 }}>
@@ -258,7 +246,6 @@ export default function Tags() {
         </Alert>
       ) : null}
 
-      {/* Tags Grid */}
       <Grid container spacing={3}>
         {sortedTags.map((tag) => {
           const notesWithTag = getNotesWithTag(tag.name);
@@ -309,10 +296,8 @@ export default function Tags() {
                       <ColorLensIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
                       <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: tag.color, border: '1px solid #e2e8f0' }} />
                     </Box>
-                    {/* Nếu có ngày tạo thì hiển thị, không thì thôi */}
                     {tag.created_at && (
                         <Typography variant="caption" color="#94a3b8">
-                         {/* format(new Date(tag.created_at), 'dd/MM/yyyy')  <-- Cần check kĩ format backend trả về */}
                          Mới tạo
                         </Typography>
                     )}
@@ -339,8 +324,7 @@ export default function Tags() {
           );
         })}
       </Grid>
-
-      {/* Add/Edit Tag Dialog */}
+      
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>{editingTag ? 'Chỉnh sửa thẻ' : 'Thẻ mới'}</DialogTitle>
         <DialogContent>

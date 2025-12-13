@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom'; // Để lấy ID từ đường dẫn
+import { useParams } from 'react-router-dom';
 import { Box, Typography, Grid, Card, CardContent, Chip, Alert, CircularProgress } from '@mui/material';
 import { Folder as FolderIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { auth } from '../firebase/config';
-import { getNotes } from '../services/api'; // Import API
+import { getNotes } from '../services/api';
 
 export default function Folder() {
-  const { folderId } = useParams(); // Lấy ID folder từ URL (ví dụ: /folders/2 -> lấy số 2)
+  const { folderId } = useParams();
   const user = auth.currentUser;
   
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // --- LẤY DỮ LIỆU ---
+
   useEffect(() => {
     const fetchNotesInFolder = async () => {
       if (user?.uid && folderId) {
         setLoading(true);
         try {
-          // Gọi API với tham số folderId
           const data = await getNotes(user.uid, folderId);
           if (Array.isArray(data)) {
             setNotes(data);
@@ -32,7 +31,7 @@ export default function Folder() {
       }
     };
     fetchNotesInFolder();
-  }, [user, folderId]); // Chạy lại mỗi khi đổi folder khác
+  }, [user, folderId]);
 
   if (loading) return <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>;
 
