@@ -86,6 +86,33 @@ def create_tag(tag: schemas.TagCreate, db: Session = Depends(get_db)):
 def read_tags(user_id: str, db: Session = Depends(get_db)):
     return db.query(models.Tag).filter(models.Tag.user_id == user_id).all()
 
+@app.delete("/tags/{tag_id}")
+def delete_tag(tag_id: int, db: Session = Depends(get_db)):
+
+    db_tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+    
+    if not db_tag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thẻ")
+    
+    db.delete(db_tag)
+    db.commit()
+    
+    return {"message": "Đã xóa thẻ thành công"}
+
+@app.put("/tags/{tag_id}")
+def update_tag(tag_id: int, tag_data: schemas.TagCreate, db: Session = Depends(get_db)):
+    db_tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+    
+    if not db_tag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thẻ")
+    
+    db_tag.name = tag_data.name
+    db_tag.color = tag_data.color
+    
+    db.commit()
+    db.refresh(db_tag)
+    
+    return db_tag
 
 @app.post("/notes/", response_model=schemas.NoteResponse)
 def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
@@ -117,17 +144,15 @@ def read_notes(
     db: Session = Depends(get_db),
     is_deleted: bool = False
 ):
-
     query = db.query(models.Note).filter(
         models.Note.user_id == user_id, 
-        models.Note.is_deleted == False
+        models.Note.is_deleted == is_deleted 
     )
-    
+    # -----------------
 
     if folder_id:
         query = query.filter(models.Note.folder_id == folder_id)
         
-
     return query.all()
 
 
@@ -179,3 +204,14 @@ def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Dep
     db.refresh(db_note)
     return db_note
 
+@app.post("/notes/{note_id}/restore")
+def restore_note(note_id: int, db: Session = Depends(get_db)):
+    db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
+    
+    if not db_note:
+        raise HTTPException(status_code=404, detail="Không tìm thấy ghi chú")
+    
+    db_note.is_deleted = False 
+    db.commit()
+    
+    return {"message": "Đã khôi phục ghi chú thành công"}

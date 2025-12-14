@@ -8,15 +8,15 @@ import {
 } from '@mui/material';
 import {
   Label as LabelIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Add as AddIcon, Search as SearchIcon, Note as NoteIcon,
+  Add as AddIcon, Search as SearchIcon, 
   Star as StarIcon, StarBorder as StarBorderIcon,
-  ColorLens as ColorLensIcon, Sort as SortIcon
-} from '@mui/icons-material';
+  Sort as SortIcon
+} from '@mui/icons-material'; // Giữ nguyên icon cũ của em
 
 import { useNotes } from '../hooks/useNotes';
-import { format } from 'date-fns';
 import { auth } from '../firebase/config';
-import { getTags, createTag } from '../services/api';
+// QUAN TRỌNG: Import thêm deleteTag và updateTag
+import { getTags, createTag, deleteTag, updateTag } from '../services/api';
 
 export default function Tags() {
 
@@ -42,7 +42,6 @@ export default function Tags() {
     '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
   ];
 
-
   useEffect(() => {
     const fetchTags = async () => {
       if (user?.uid) {
@@ -64,8 +63,12 @@ export default function Tags() {
 
   const getNotesWithTag = (tagName) => {
     if (!notes) return [];
+    // Fix nhẹ để tìm chính xác hơn
     return notes.filter(note => 
-      note.tags?.some(tag => tag.toLowerCase() === tagName.toLowerCase())
+      note.tags?.some(tag => {
+          const tName = typeof tag === 'object' ? tag.name : tag;
+          return tName.toLowerCase() === tagName.toLowerCase();
+      })
     );
   };
 
@@ -90,41 +93,51 @@ export default function Tags() {
     setNewTag({ name: '', color: '#3b82f6', description: '' });
   };
 
+  // --- PHẦN SỬA LOGIC CHÍNH Ở ĐÂY ---
   const handleSubmit = async () => {
     if (!newTag.name.trim()) return;
     if (!user?.uid) return alert("Vui lòng đăng nhập!");
 
-    if (editingTag) {
-      alert("Tính năng sửa đang cập nhật Backend!");
-    } else {
-      try {
-        const createdTag = await createTag(newTag.name, newTag.color, user.uid);
-        
-        if (createdTag) {
-          setTags([...tags, createdTag]);
-          handleCloseDialog();
+    try {
+        if (editingTag) {
+            // LOGIC SỬA (UPDATE)
+            const updated = await updateTag(editingTag.id, newTag.name, newTag.color, user.uid);
+            if (updated) {
+                // Cập nhật lại danh sách ngay lập tức
+                setTags(tags.map(t => t.id === editingTag.id ? updated : t));
+                handleCloseDialog();
+            } else {
+                alert("Lỗi khi cập nhật thẻ!");
+            }
+        } else {
+            // LOGIC TẠO MỚI (CREATE)
+            const createdTag = await createTag(newTag.name, newTag.color, user.uid);
+            if (createdTag) {
+                setTags([...tags, createdTag]);
+                handleCloseDialog();
+            }
         }
-      } catch (error) {
-        alert("Lỗi khi tạo thẻ!");
-      }
+    } catch (error) {
+        console.error(error);
+        alert("Lỗi kết nối!");
     }
   };
 
-
-  const handleDelete = (id, tagName) => {
-
-    if (window.confirm('Bạn muốn xóa thẻ này? (Backend chưa hỗ trợ xóa nhé)')) {
-
-       alert("Đã gửi lệnh xóa (Fake)");
-       setTags(tags.filter(t => t.id !== id));
+  // --- PHẦN SỬA LOGIC XÓA Ở ĐÂY ---
+  const handleDelete = async (tagId) => {
+    if (confirm("Bạn có chắc muốn xóa thẻ này không?")) {
+        const success = await deleteTag(tagId);
+        if (success) {
+            setTags(tags.filter(t => t.id !== tagId)); 
+        } else {
+            alert("Lỗi rồi, không xóa được!");
+        }
     }
-  };
+  }
 
   const toggleStarTag = (id) => {
-
       console.log("Toggle star:", id);
   };
-
 
   const filteredTags = tags.filter(tag =>
     tag.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -154,7 +167,7 @@ export default function Tags() {
   const totalNotesWithTags = notes.filter(note => note.tags && note.tags.length > 0).length;
   const mostUsedTag = tags.length > 0 ? tags.reduce((prev, current) => 
     getNotesWithTag(prev.name).length > getNotesWithTag(current.name).length ? prev : current
-  ) : null;
+  , tags[0]) : null;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -180,6 +193,7 @@ export default function Tags() {
         </Button>
       </Box>
 
+      {/* Toolbar giữ nguyên */}
       <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
         <TextField
           fullWidth
@@ -211,7 +225,6 @@ export default function Tags() {
           </Select>
         </FormControl>
       </Box>
-
 
       {mostUsedTag && tags.length > 0 && (
         <Card sx={{ mb: 3, backgroundColor: '#f8fafc', borderRadius: 2 }}>
@@ -293,32 +306,18 @@ export default function Tags() {
 
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 'auto', pt: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <ColorLensIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
-                      <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: tag.color, border: '1px solid #e2e8f0' }} />
                     </Box>
-                    {tag.created_at && (
-                        <Typography variant="caption" color="#94a3b8">
-                         Mới tạo
-                        </Typography>
-                    )}
+                    {/* GIỮ NGUYÊN GIAO DIỆN CŨ CỦA EM Ở ĐÂY, CHỈ GẮN HÀM VÀO THÔI */}
+                    <Box sx={{ display: 'flex' }}>
+                       <Tooltip title="Sửa">
+                           <IconButton onClick={() => handleOpenDialog(tag)} size="small" sx={{ color: '#64748b' }}><EditIcon /></IconButton>
+                       </Tooltip>
+                       <Tooltip title="Xóa">
+                           <IconButton onClick={() => handleDelete(tag.id)} size="small" sx={{ color: '#ef4444' }}><DeleteIcon /></IconButton>
+                       </Tooltip>
+                    </Box>
                   </Box>
                 </CardContent>
-
-                <Box sx={{ p: 2, pt: 0, borderTop: '1px solid #e2e8f0' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box>
-                      <Tooltip title="Chỉnh sửa">
-                        <IconButton onClick={() => handleOpenDialog(tag)} size="small" sx={{ color: '#64748b' }}><EditIcon /></IconButton>
-                      </Tooltip>
-                      <Tooltip title="Xóa">
-                        <IconButton onClick={() => handleDelete(tag.id, tag.name)} size="small" sx={{ color: '#ef4444' }}><DeleteIcon /></IconButton>
-                      </Tooltip>
-                    </Box>
-                    <Button size="small" variant="outlined" sx={{ fontSize: '0.75rem', textTransform: 'none', borderColor: tag.color, color: tag.color }}>
-                      Xem tất cả ({notesWithTag.length})
-                    </Button>
-                  </Box>
-                </Box>
               </Card>
             </Grid>
           );

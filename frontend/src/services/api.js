@@ -4,7 +4,6 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-// --- USER (ĐIỂM DANH) ---
 export const syncUser = async (user) => {
   try {
     await fetch(`${BASE_URL}/users/`, {
@@ -21,7 +20,6 @@ export const syncUser = async (user) => {
   }
 };
 
-// --- FOLDER ---
 export const getFolders = async (userId) => {
   try {
     const response = await fetch(`${BASE_URL}/folders/?user_id=${userId}`);
@@ -47,7 +45,6 @@ export const createFolder = async (name, userId) => {
   }
 };
 
-// --- TAGS (THẺ) ---
 export const getTags = async (userId) => {
   try {
     const response = await fetch(`${BASE_URL}/tags/?user_id=${userId}`);
@@ -77,9 +74,39 @@ export const createTag = async (name, color, userId) => {
   }
 };
 
-// --- NOTES (GHI CHÚ) ---
+export const deleteTag = async (tagId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/tags/${tagId}`, {
+      method: 'DELETE',
+    });
+    return response.ok; // Trả về true nếu xóa thành công
+  } catch (error) {
+    console.error("Lỗi xóa tag:", error);
+    return false;
+  }
+};
 
-// 1. Lấy danh sách (Hỗ trợ lọc theo Folder và Thùng rác)
+export const updateTag = async (tagId, name, color, userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/tags/${tagId}`, {
+      method: 'PUT',
+      headers: headers,
+      body: JSON.stringify({ 
+          name: name, 
+          color: color, 
+          user_id: userId
+      }),
+    });
+    
+    if (!response.ok) throw new Error("Lỗi sửa tag");
+    return await response.json(); // Trả về tag mới đã sửa
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+// 1. Lấy danh sách ghi chú
 export const getNotes = async (userId, folderId = null, isDeleted = false) => {
   try {
     let url = `${BASE_URL}/notes/?user_id=${userId}&is_deleted=${isDeleted}`;
@@ -156,6 +183,18 @@ export const deleteNotePermanently = async (noteId) => {
     return response.ok;
   } catch (error) {
     console.error(error);
+    return false;
+  }
+};
+
+export const restoreNote = async (noteId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/notes/${noteId}/restore`, {
+      method: 'POST',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error("Lỗi restore:", error);
     return false;
   }
 };
