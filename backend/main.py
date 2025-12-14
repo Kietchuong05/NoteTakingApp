@@ -15,11 +15,14 @@ origins = [
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    "https://notetakingapp-1.onrender.com",
 ]
-app.add_middleware( CORSMiddleware,
-    allow_origins=["*"],
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], 
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -126,23 +129,6 @@ def read_notes(
         
 
     return query.all()
-
-@app.put("/notes/{note_id}", response_model=schemas.NoteResponse)
-def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Depends(get_db)):
-
-    db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
-    if not db_note:
-        raise HTTPException(status_code=404, detail="Không tìm thấy ghi chú")
-    
-
-    update_data = note_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_note, key, value)
-
-    db.add(db_note)
-    db.commit()
-    db.refresh(db_note)
-    return db_note
 
 
 @app.delete("/notes/{note_id}")
