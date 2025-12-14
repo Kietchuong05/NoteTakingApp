@@ -46,32 +46,39 @@ export const createFolder = async (name, userId) => {
 };
 
 export const updateFolder = async (folderId, name, userId) => {
-  try {
-    const response = await fetch(`${BASE_URL}/folders/${folderId}`, {
-      method: 'PUT',
-      headers: headers,
-      body: JSON.stringify({ name: name, user_id: userId }),
-    });
-    
-    if (!response.ok) throw new Error("Lỗi sửa tên folder");
-    return await response.json(); // Trả về folder đã update
-  } catch (error) {
-    console.error("Lỗi update folder:", error);
-    return null;
-  }
+  try {
+    // 1. Thêm user_id vào URL dưới dạng Query Parameter
+    const urlWithQuery = `${BASE_URL}/folders/${folderId}?user_id=${userId}`;
+
+    const response = await fetch(urlWithQuery, { // <-- Dùng URL mới
+      method: 'PUT',
+      headers: headers,
+      body: JSON.stringify({ name: name }), // <-- Body chỉ còn tên (name)
+    });
+    
+    if (!response.ok) throw new Error("Lỗi sửa tên folder");
+    return await response.json(); 
+  } catch (error) {
+    console.error("Lỗi update folder:", error);
+    return null;
+  }
 };
 
 // 4. Xóa thư mục (Delete)
-export const deleteFolder = async (folderId) => {
-  try {
-    const response = await fetch(`${BASE_URL}/folders/${folderId}`, {
-      method: 'DELETE',
-    });
-    return response.ok; // Trả về true nếu xóa thành công
-  } catch (error) {
-    console.error("Lỗi xóa folder:", error);
-    return false;
-  }
+export const deleteFolder = async (folderId, userId) => { 
+  try {
+    // 1. Thêm user_id vào URL dưới dạng Query Parameter
+    const urlWithQuery = `${BASE_URL}/folders/${folderId}?user_id=${userId}`;
+
+    const response = await fetch(urlWithQuery, { // <-- Dùng URL mới
+      method: 'DELETE',
+      // 2. KHÔNG CÓ Body ở đây
+    });
+    return response.ok; 
+  } catch (error) {
+    console.error("Lỗi xóa folder:", error);
+    return false;
+  }
 };
 
 export const getTags = async (userId) => {

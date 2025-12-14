@@ -88,7 +88,7 @@ export default function Folders() {
     
     if(confirm("Bạn có chắc chắn muốn xóa thư mục này? (Lưu ý: Các ghi chú bên trong sẽ mất liên kết folder)")) {
         try {
-            const success = await deleteFolder(id);
+            const success = await deleteFolder(id, user.uid);
             if (success) {
                 setFolders(folders.filter(f => f.id !== id));
             } else {

@@ -19,8 +19,6 @@ import {
 import { auth } from '../firebase/config';
 import { getNotes, createNote, updateNote, deleteNote, deleteNotePermanently, getFolders, getTags } from '../services/api';
 import { format } from 'date-fns';
-
-// 1. IMPORT CÁI NÀY VÀO (QUAN TRỌNG)
 import RichTextEditor from '../components/notes/RichTextEditor';
 
 export default function Notes() {

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -73,6 +73,66 @@ def read_folders(user_id: str, db: Session = Depends(get_db)):
 
     return db.query(models.Folder).filter(models.Folder.user_id == user_id).all()
 
+@app.put("/folders/{folder_id}", response_model=schemas.FolderResponse)
+def update_folder_endpoint(
+    folder_id: int,
+    # SỬA LẠI: Dùng schemas.FolderUpdate (chỉ có name) thay vì FolderCreate
+    folder_update: schemas.FolderUpdate, 
+    user_id: str = Query(..., description="ID của người dùng hiện tại"),
+    db: Session = Depends(get_db)
+):
+    # 1. Lọc theo ID folder VÀ ID user
+    db_folder = db.query(models.Folder).filter(
+        models.Folder.id == folder_id,
+        models.Folder.user_id == user_id
+    ).first()
+
+    if not db_folder:
+        raise HTTPException(status_code=404, detail="Folder không tìm thấy hoặc không phải của bạn")
+    
+    # Lấy tên mới từ Body (chắc chắn có vì FolderUpdate yêu cầu)
+    new_name = folder_update.name 
+    
+    if new_name != db_folder.name:
+        # Kiểm tra trùng tên
+        if db.query(models.Folder).filter(
+            models.Folder.name == new_name,
+            models.Folder.user_id == user_id
+        ).first():
+            raise HTTPException(status_code=400, detail="Tên Folder mới đã tồn tại")
+
+        db_folder.name = new_name # Cập nhật tên
+
+    db.commit()
+    db.refresh(db_folder)
+    return db_folder
+
+@app.delete("/folders/{folder_id}")
+def delete_folder_endpoint(
+    folder_id: int,
+    user_id: str = Query(..., description="ID của người dùng hiện tại"),
+    db: Session = Depends(get_db)
+):
+    # 1. Tìm Folder của User
+    db_folder = db.query(models.Folder).filter(
+        models.Folder.id == folder_id,
+        models.Folder.user_id == user_id
+    ).first()
+
+    if not db_folder:
+        raise HTTPException(status_code=404, detail="Folder không tìm thấy hoặc không phải của bạn")
+    
+    # 2. Cập nhật Note về NULL
+    # Dùng câu lệnh UPDATE trực tiếp để hiệu quả hơn.
+    db.query(models.Note).filter(models.Note.folder_id == folder_id).update(
+        {"folder_id": None}
+    )
+
+    # 3. Xóa Folder
+    db.delete(db_folder)
+    db.commit()
+    
+    return {"message": "Folder đã được xóa và các ghi chú đã được di chuyển ra ngoài."}
 
 @app.post("/tags/", response_model=schemas.TagResponse)
 def create_tag(tag: schemas.TagCreate, db: Session = Depends(get_db)):

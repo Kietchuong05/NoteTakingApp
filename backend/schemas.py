@@ -22,6 +22,12 @@ class FolderBase(BaseModel):
 class FolderCreate(FolderBase):
     user_id: str
 
+class FolderUpdate(BaseModel):
+    name: str 
+    
+    class Config:
+        from_attributes = True
+
 class FolderResponse(FolderBase):
     id: int
     created_at: datetime
