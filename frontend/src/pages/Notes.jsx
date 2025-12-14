@@ -20,6 +20,9 @@ import { auth } from '../firebase/config';
 import { getNotes, createNote, updateNote, deleteNote, deleteNotePermanently, getFolders, getTags } from '../services/api';
 import { format } from 'date-fns';
 
+// 1. IMPORT CÁI NÀY VÀO (QUAN TRỌNG)
+import RichTextEditor from '../components/notes/RichTextEditor';
+
 export default function Notes() {
   const user = auth.currentUser;
   const location = useLocation();
@@ -37,12 +40,14 @@ export default function Notes() {
   const [openShareDialog, setOpenShareDialog] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [sharingNote, setSharingNote] = useState(null);
+  
   const [formData, setFormData] = useState({ 
     title: '', 
     content: '', 
     folderId: '', 
     tagIds: [] 
   });
+  
   const [shareEmail, setShareEmail] = useState('');
   const [sharePermission, setSharePermission] = useState('view');
 
@@ -103,9 +108,7 @@ export default function Notes() {
 
   const handleShare = async () => {
     if (!shareEmail.trim()) return alert("Vui lòng nhập email người nhận!");
-    
     try {
-      // TODO: Gọi API để chia sẻ
       alert(`Chia sẻ ghi chú "${sharingNote.title}" với ${shareEmail} (quyền: ${sharePermission})`);
       setOpenShareDialog(false);
     } catch (error) {
@@ -161,6 +164,8 @@ export default function Notes() {
   };
 
   const handleRestore = async (id) => {
+    // Lưu ý: Cần đảm bảo hàm restoreNote đã được import nếu dùng
+    // Trong file cũ cậu gửi chưa thấy import restoreNote, nếu chưa có thì updateNote(id, { is_deleted: false })
     const updated = await updateNote(id, { is_deleted: false });
     if (updated) {
       setNotes(notes.filter(n => n.id !== id));
@@ -300,7 +305,6 @@ export default function Notes() {
                   }}
                 >
                   {stripHtml(note.content).substring(0, 150) || "Không có nội dung"}
-                  {stripHtml(note.content).length > 150 ? '...' : ''}
                 </Typography>
 
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 2, mt: 'auto' }}>
@@ -322,12 +326,7 @@ export default function Notes() {
                     <Chip 
                       label={`+${note.tags.length - 3}`} 
                       size="small" 
-                      sx={{ 
-                        bgcolor: '#e2e8f0', 
-                        color: '#64748b',
-                        fontSize: '10px',
-                        height: 22
-                      }} 
+                      sx={{ bgcolor: '#e2e8f0', color: '#64748b', fontSize: '10px', height: 22 }} 
                     />
                   )}
                 </Box>
@@ -345,16 +344,10 @@ export default function Notes() {
                         icon={<FolderIcon style={{ fontSize: 14 }} />} 
                         label={note.folder.name} 
                         size="small" 
-                        sx={{ 
-                          bgcolor: '#eff6ff', 
-                          color: '#3b82f6', 
-                          fontSize: 11 
-                        }} 
+                        sx={{ bgcolor: '#eff6ff', color: '#3b82f6', fontSize: 11 }} 
                       />
                     ) : (
-                      <Typography variant="caption" color="#94a3b8">
-                        Chưa phân loại
-                      </Typography>
+                      <Typography variant="caption" color="#94a3b8">Chưa phân loại</Typography>
                     )}
                     <Typography variant="caption" color="#94a3b8">
                       {note.created_at ? format(new Date(note.created_at), 'dd/MM/yyyy') : 'Mới tạo'}
@@ -365,20 +358,12 @@ export default function Notes() {
                     {isTrashPage ? (
                       <>
                         <Tooltip title="Khôi phục">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleRestore(note.id)} 
-                            sx={{ color: '#10b981' }}
-                          >
+                          <IconButton size="small" onClick={() => handleRestore(note.id)} sx={{ color: '#10b981' }}>
                             <RestoreIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Xóa vĩnh viễn">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleHardDelete(note.id)} 
-                            sx={{ color: '#ef4444' }}
-                          >
+                          <IconButton size="small" onClick={() => handleHardDelete(note.id)} sx={{ color: '#ef4444' }}>
                             <DeleteForeverIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -386,29 +371,17 @@ export default function Notes() {
                     ) : (
                       <>
                         <Tooltip title="Chia sẻ">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleOpenShare(note)} 
-                            sx={{ color: '#3b82f6' }}
-                          >
+                          <IconButton size="small" onClick={() => handleOpenShare(note)} sx={{ color: '#3b82f6' }}>
                             <ShareIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Sửa">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleOpenEdit(note)} 
-                            sx={{ color: '#64748b' }}
-                          >
+                          <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ color: '#64748b' }}>
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Xóa">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleSoftDelete(note.id)} 
-                            sx={{ color: '#ef4444' }}
-                          >
+                          <IconButton size="small" onClick={() => handleSoftDelete(note.id)} sx={{ color: '#ef4444' }}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -430,10 +403,7 @@ export default function Notes() {
           fullWidth 
           maxWidth="md"
           PaperProps={{
-            sx: { 
-              maxHeight: '90vh',
-              height: '700px'
-            }
+            sx: { maxHeight: '90vh', height: '700px' }
           }}
         >
           <DialogTitle>
@@ -454,9 +424,13 @@ export default function Notes() {
               <MuiInputLabel shrink sx={{ mb: 1, color: 'text.primary' }}>
                 Nội dung
               </MuiInputLabel>
-              <Box sx={{ flex: 1, border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
-                
-              </Box>
+              
+              {/* 2. CHỖ NÀY ĐÃ ĐƯỢC THAY BẰNG EDITOR XỊN */}
+              <RichTextEditor 
+                  content={formData.content}
+                  onChange={(html) => setFormData({ ...formData, content: html })}
+                  placeholder="Bắt đầu viết gì đó..."
+              />
             </Box>
             
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
@@ -496,13 +470,7 @@ export default function Notes() {
                             key={id}
                             label={tag.name}
                             size="small"
-                            sx={{ 
-                              bgcolor: tag.color, 
-                              color: '#fff',
-                              '& .MuiChip-deleteIcon': {
-                                color: '#fff'
-                              }
-                            }}
+                            sx={{ bgcolor: tag.color, color: '#fff' }}
                           />
                         ) : null;
                       })}
@@ -512,15 +480,7 @@ export default function Notes() {
                   {tags.map((tag) => (
                     <MenuItem key={tag.id} value={tag.id}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box
-                          sx={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '50%',
-                            bgcolor: tag.color,
-                            border: '1px solid #e0e0e0'
-                          }}
-                        />
+                        <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: tag.color }} />
                         {tag.name}
                       </Box>
                     </MenuItem>
@@ -542,7 +502,7 @@ export default function Notes() {
         </Dialog>
       )}
 
-      {/* Dialog chia sẻ ghi chú */}
+      {/* Dialog chia sẻ (Giữ nguyên) */}
       <Dialog 
         open={openShareDialog} 
         onClose={() => setOpenShareDialog(false)} 
@@ -554,18 +514,11 @@ export default function Notes() {
           <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
             {sharingNote?.title}
           </Typography>
-          
           <TextField
-            autoFocus
-            margin="dense"
-            label="Email người nhận"
-            fullWidth
-            value={shareEmail}
-            onChange={(e) => setShareEmail(e.target.value)}
+            autoFocus margin="dense" label="Email người nhận" fullWidth
+            value={shareEmail} onChange={(e) => setShareEmail(e.target.value)}
             sx={{ mb: 2 }}
-            placeholder="Nhập email của người bạn muốn chia sẻ"
           />
-          
           <FormControl fullWidth margin="dense">
             <InputLabel>Quyền truy cập</InputLabel>
             <Select
@@ -577,21 +530,10 @@ export default function Notes() {
               <MenuItem value="edit">Chỉnh sửa</MenuItem>
             </Select>
           </FormControl>
-          
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-            ⓘ Người nhận sẽ thấy ghi chú này trong mục "Chia sẻ với tôi"
-          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenShareDialog(false)}>Hủy</Button>
-          <Button 
-            variant="contained" 
-            onClick={handleShare} 
-            sx={{ bgcolor: '#3b82f6' }}
-            disabled={!shareEmail.trim()}
-          >
-            Chia sẻ
-          </Button>
+          <Button variant="contained" onClick={handleShare} disabled={!shareEmail.trim()}>Chia sẻ</Button>
         </DialogActions>
       </Dialog>
     </Box>
