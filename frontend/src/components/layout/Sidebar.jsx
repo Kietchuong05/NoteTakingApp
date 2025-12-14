@@ -1,8 +1,9 @@
+// Sidebar.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer, Box, List, ListItem, ListItemIcon, ListItemText,
-  Typography, Avatar, IconButton, Button, Tooltip, Divider
+  Typography, Avatar, IconButton, Button, Divider, Tooltip
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
@@ -11,36 +12,30 @@ import {
   Note as NoteIcon,
   Tag as TagIcon,
   Logout as LogoutIcon,
-  Star as StarIcon, // Icon ngôi sao
-  DeleteOutline as TrashIcon // Icon thùng rác
+  Star as StarIcon,
+  DeleteOutline as TrashIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { auth } from '../../firebase/config';
 import { signOut } from 'firebase/auth';
-
-// Import API
-import { getFolders, createFolder, getTags, createTag, syncUser } from '../../services/api';
+import { getFolders, createTag, syncUser, getTags } from '../../services/api';
 
 const drawerWidth = 280;
 
 export default function Sidebar() {
   const [open, setOpen] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation(); // Dùng để biết đang ở trang nào mà tô màu
+  const location = useLocation();
   const user = auth.currentUser;
 
-  // --- STATE DỮ LIỆU ---
   const [myFolders, setMyFolders] = useState([]);
   const [myTags, setMyTags] = useState([]);
 
-  // --- USE EFFECT: CHẠY KHI F5 HOẶC LOGIN ---
   useEffect(() => {
     const initData = async () => {
       if (user?.uid) {
         try {
-          // 1. Điểm danh User
           await syncUser(user);
-
-          // 2. Lấy Folder và Tag
           const [foldersData, tagsData] = await Promise.all([
              getFolders(user.uid),
              getTags(user.uid)
@@ -57,17 +52,6 @@ export default function Sidebar() {
     initData();
   }, [user]);
 
-  // --- HÀM XỬ LÝ TẠO FOLDER ---
-  const handleCreateFolder = async () => {
-    if (!user?.uid) return alert("Đăng nhập đi em!");
-    const name = prompt("Nhập tên thư mục mới:");
-    if (!name) return;
-
-    const newFolder = await createFolder(name, user.uid);
-    if (newFolder) setMyFolders([...myFolders, newFolder]);
-  };
-
-  // --- HÀM XỬ LÝ TẠO TAG ---
   const handleCreateTag = async () => {
     if (!user?.uid) return alert("Đăng nhập đi em!");
     const name = prompt("Nhập tên thẻ mới:");
@@ -82,7 +66,9 @@ export default function Sidebar() {
     navigate('/login');
   };
 
-  // --- GIAO DIỆN ---
+  // Hiện 5 thư mục gần nhất
+  const recentFolders = myFolders.slice(0, 5);
+
   return (
     <Drawer
       variant="permanent"
@@ -113,10 +99,9 @@ export default function Sidebar() {
         </Box>
       </Box>
 
-      {/* 3. MENU CHÍNH (QUAN TRỌNG) */}
+      {/* 3. MENU CHÍNH */}
       <Box sx={{ flex: 1, overflowY: 'auto' }}>
         <List>
-            {/* Mục: Tất cả ghi chú */}
             <ListItem 
                 button 
                 onClick={() => navigate('/notes')} 
@@ -127,7 +112,6 @@ export default function Sidebar() {
                 {open && <ListItemText primary="Tất cả ghi chú" />}
             </ListItem>
 
-            {/* Mục: Được gắn sao (MỚI) */}
             <ListItem 
                 button 
                 onClick={() => navigate('/starred')} 
@@ -138,7 +122,6 @@ export default function Sidebar() {
                 {open && <ListItemText primary="Được gắn sao" />}
             </ListItem>
 
-            {/* Mục: Thùng rác (MỚI) */}
             <ListItem 
                 button 
                 onClick={() => navigate('/trash')} 
@@ -152,41 +135,46 @@ export default function Sidebar() {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* --- KHU VỰC FOLDER --- */}
-        <Box sx={{ px: 2, mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* --- KHU VỰC FOLDER (ĐÃ SỬA) --- */}
+        <Box sx={{ px: 2, mt: 1, mb: 1 }}>
+            {/* Tiêu đề tĩnh */}
             {open && <Typography variant="caption" fontWeight="bold" color="text.secondary">THƯ MỤC</Typography>}
-            {open && (
-                <IconButton size="small" onClick={handleCreateFolder} sx={{ bgcolor: '#eff6ff', color: '#3b82f6', '&:hover':{bgcolor:'#dbeafe'} }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
-                </IconButton>
-            )}
         </Box>
+        
         <List>
-            {myFolders.map(folder => (
+            {/* 1. Nút Quản lý thư mục (Dẫn sang trang Grid) */}
+            <ListItem 
+                button 
+                onClick={() => navigate('/folders')} 
+                selected={location.pathname === '/folders'}
+                sx={{ mb: 0.5 }}
+            >
+                <ListItemIcon><FolderIcon color={location.pathname === '/folders' ? "primary" : "inherit"} /></ListItemIcon>
+                {open && <ListItemText primary="Quản lý thư mục" />}
+            </ListItem>
+
+            {/* 2. Danh sách 5 folder gần đây (Thụt vào 1 chút để phân cấp) */}
+            {recentFolders.map(folder => (
                 <ListItem 
                     key={folder.id} 
-                    button 
-                    onClick={() => navigate(`/folders/${folder.id}`)}
+                    button
+                    onClick={() => navigate(`/folders/${folder.id}`)} 
                     selected={location.pathname === `/folders/${folder.id}`}
-                    sx={{ borderRadius: '0 24px 24px 0' }}
+                    sx={{ borderRadius: '0 24px 24px 0', pl: 4 }} // Thụt lề (padding-left) để thụt vào
                 >
-                    <ListItemIcon><FolderIcon sx={{ color: '#f59e0b' }} /></ListItemIcon>
-                    {open && <ListItemText primary={folder.name} primaryTypographyProps={{ noWrap: true }} />}
+                    <ListItemIcon sx={{ minWidth: 30 }}>
+                        <FolderIcon sx={{ color: '#f59e0b', fontSize: 20 }} />
+                    </ListItemIcon>
+                    {open && <ListItemText primary={folder.name} primaryTypographyProps={{ noWrap: true, variant: 'body2' }} />}
                 </ListItem>
             ))}
         </List>
 
-        {/* --- KHU VỰC TAGS (THẺ) --- */}
+        {/* --- KHU VỰC TAGS --- */}
         <Box sx={{ px: 2, mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             {open && <Typography variant="caption" fontWeight="bold" color="text.secondary">THẺ (TAGS)</Typography>}
-            {open && (
-                <IconButton size="small" onClick={handleCreateTag} sx={{ bgcolor: '#ecfdf5', color: '#10b981', '&:hover':{bgcolor:'#d1fae5'} }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
-                </IconButton>
-            )}
         </Box>
         <List>
-            {/* Nút quản lý thẻ */}
             <ListItem button onClick={() => navigate('/tags')} selected={location.pathname === '/tags'}>
                  <ListItemIcon><TagIcon /></ListItemIcon>
                  {open && <ListItemText primary="Quản lý thẻ" />}

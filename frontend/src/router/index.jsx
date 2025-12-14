@@ -1,12 +1,12 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Login from "../pages/Login.jsx";
-import Folders from "../pages/Folders.jsx";
 import Notes from "../pages/Notes.jsx";
 import Tags from "../pages/Tags.jsx";
 import Layout from "../components/layout/Layout.jsx";
 import ProtectedRoute from "../components/ProtectedRoute.jsx";
 
-
+import Folders from "../pages/Folders.jsx";
+import Folder from "../pages/Folder.jsx";
 
 export default createBrowserRouter([
   {
@@ -21,16 +21,14 @@ export default createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-
       {
         path: "folders", 
-        element: <Folders />,
+        element: <Folders />, 
       },
-
 
       {
         path: "folders/:folderId",
-        element: <Folders />,
+        element: <Folder />, 
       },
 
       {
@@ -48,7 +46,7 @@ export default createBrowserRouter([
       {
         path: "trash",
         element: <Notes />,
-    },
+      },
     ],
   },
   {

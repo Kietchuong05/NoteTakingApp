@@ -26,7 +26,6 @@ export default function Tags() {
   const [editingTag, setEditingTag] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Đổi mặc định sang 'name' vì đã bỏ tính năng đếm số lượng note
   const [sortBy, setSortBy] = useState('name');
   
   const [newTag, setNewTag] = useState({
@@ -59,7 +58,6 @@ export default function Tags() {
     fetchTags();
   }, [user]);
 
-  // --- ĐÃ XÓA HÀM getNotesWithTag GÂY LỖI ---
 
   const handleOpenDialog = (tag = null) => {
     if (tag) {
@@ -121,7 +119,6 @@ export default function Tags() {
 
   const toggleStarTag = (id) => {
       console.log("Toggle star:", id);
-      // Logic update star API ở đây nếu cần
   };
 
   const filteredTags = tags.filter(tag =>
@@ -129,7 +126,6 @@ export default function Tags() {
     tag.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // --- LOGIC SORT ĐÃ ĐƯỢC LÀM SẠCH, KHÔNG GỌI NOTES NỮA ---
   const sortedTags = [...filteredTags].sort((a, b) => {
     switch (sortBy) {
       case 'name': return a.name.localeCompare(b.name);
@@ -145,8 +141,6 @@ export default function Tags() {
       </Box>
     );
   }
-
-  // --- ĐÃ XÓA totalNotesWithTags VÀ mostUsedTag ---
 
   return (
     <Box sx={{ p: 3 }}>
@@ -197,14 +191,12 @@ export default function Tags() {
             startAdornment={<SortIcon sx={{ color: '#64748b', mr: 1 }} />}
             sx={{ borderRadius: 2 }}
           >
-            {/* Đã xóa option sort by count */}
             <MenuItem value="name">Tên A-Z</MenuItem>
             <MenuItem value="starred">Gắn sao</MenuItem>
           </Select>
         </FormControl>
       </Box>
 
-      {/* ĐÃ XÓA CARD "MOST USED TAG" VÌ NÓ CẦN NOTES */}
 
       {sortedTags.length === 0 ? (
         <Alert severity="info" sx={{ borderRadius: 2, mb: 3 }}>
@@ -214,7 +206,6 @@ export default function Tags() {
 
       <Grid container spacing={3}>
         {sortedTags.map((tag) => {
-          // Không còn tính toán notesWithTag ở đây nữa
           
           return (
             <Grid item xs={12} sm={6} md={4} lg={3} key={tag.id}>
@@ -240,7 +231,6 @@ export default function Tags() {
                         <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e293b' }}>
                           {tag.name}
                         </Typography>
-                        {/* Đã xóa Badge đếm số note */}
                       </Box>
                     </Box>
                     <IconButton size="small" onClick={() => toggleStarTag(tag.id)}>
