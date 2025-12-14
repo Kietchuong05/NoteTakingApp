@@ -11,11 +11,10 @@ import {
   Add as AddIcon, Search as SearchIcon, 
   Star as StarIcon, StarBorder as StarBorderIcon,
   Sort as SortIcon
-} from '@mui/icons-material'; // Giữ nguyên icon cũ của em
+} from '@mui/icons-material'; 
 
-import { useNotes } from '../hooks/useNotes';
 import { auth } from '../firebase/config';
-// QUAN TRỌNG: Import thêm deleteTag và updateTag
+
 import { getTags, createTag, deleteTag, updateTag } from '../services/api';
 
 export default function Tags() {
@@ -23,7 +22,6 @@ export default function Tags() {
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const { notes = [] } = useNotes(); 
   const user = auth.currentUser;
 
   const [openDialog, setOpenDialog] = useState(false);

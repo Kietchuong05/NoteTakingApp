@@ -19,7 +19,6 @@ import {
 import { auth } from '../firebase/config';
 import { getNotes, createNote, updateNote, deleteNote, deleteNotePermanently, getFolders, getTags } from '../services/api';
 import { format } from 'date-fns';
-import RichTextEditor from '../components/notes/RichTextEditor';
 
 export default function Notes() {
   const user = auth.currentUser;
@@ -456,11 +455,7 @@ export default function Notes() {
                 Nội dung
               </MuiInputLabel>
               <Box sx={{ flex: 1, border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
-                <RichTextEditor
-                  content={formData.content}
-                  onChange={(html) => setFormData({ ...formData, content: html })}
-                  placeholder="Nhập nội dung ghi chú của bạn..."
-                />
+                
               </Box>
             </Box>
             
