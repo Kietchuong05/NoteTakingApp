@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Grid, Card, CardContent, Typography, IconButton, Button,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  Chip, Tooltip, CircularProgress, Alert, InputAdornment,
-  Avatar, Badge, MenuItem, Select, FormControl, InputLabel
+  Tooltip, CircularProgress, Alert, InputAdornment,
+  Avatar, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import {
   Label as LabelIcon, Edit as EditIcon, Delete as DeleteIcon,
@@ -14,11 +14,9 @@ import {
 } from '@mui/icons-material'; 
 
 import { auth } from '../firebase/config';
-
 import { getTags, createTag, deleteTag, updateTag } from '../services/api';
 
 export default function Tags() {
-
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -27,7 +25,9 @@ export default function Tags() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingTag, setEditingTag] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('count');
+  
+  // Đổi mặc định sang 'name' vì đã bỏ tính năng đếm số lượng note
+  const [sortBy, setSortBy] = useState('name');
   
   const [newTag, setNewTag] = useState({
     name: '',
@@ -59,16 +59,7 @@ export default function Tags() {
     fetchTags();
   }, [user]);
 
-  const getNotesWithTag = (tagName) => {
-    if (!notes) return [];
-    // Fix nhẹ để tìm chính xác hơn
-    return notes.filter(note => 
-      note.tags?.some(tag => {
-          const tName = typeof tag === 'object' ? tag.name : tag;
-          return tName.toLowerCase() === tagName.toLowerCase();
-      })
-    );
-  };
+  // --- ĐÃ XÓA HÀM getNotesWithTag GÂY LỖI ---
 
   const handleOpenDialog = (tag = null) => {
     if (tag) {
@@ -91,24 +82,20 @@ export default function Tags() {
     setNewTag({ name: '', color: '#3b82f6', description: '' });
   };
 
-  // --- PHẦN SỬA LOGIC CHÍNH Ở ĐÂY ---
   const handleSubmit = async () => {
     if (!newTag.name.trim()) return;
     if (!user?.uid) return alert("Vui lòng đăng nhập!");
 
     try {
         if (editingTag) {
-            // LOGIC SỬA (UPDATE)
             const updated = await updateTag(editingTag.id, newTag.name, newTag.color, user.uid);
             if (updated) {
-                // Cập nhật lại danh sách ngay lập tức
                 setTags(tags.map(t => t.id === editingTag.id ? updated : t));
                 handleCloseDialog();
             } else {
                 alert("Lỗi khi cập nhật thẻ!");
             }
         } else {
-            // LOGIC TẠO MỚI (CREATE)
             const createdTag = await createTag(newTag.name, newTag.color, user.uid);
             if (createdTag) {
                 setTags([...tags, createdTag]);
@@ -121,7 +108,6 @@ export default function Tags() {
     }
   };
 
-  // --- PHẦN SỬA LOGIC XÓA Ở ĐÂY ---
   const handleDelete = async (tagId) => {
     if (confirm("Bạn có chắc muốn xóa thẻ này không?")) {
         const success = await deleteTag(tagId);
@@ -135,6 +121,7 @@ export default function Tags() {
 
   const toggleStarTag = (id) => {
       console.log("Toggle star:", id);
+      // Logic update star API ở đây nếu cần
   };
 
   const filteredTags = tags.filter(tag =>
@@ -142,12 +129,9 @@ export default function Tags() {
     tag.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // --- LOGIC SORT ĐÃ ĐƯỢC LÀM SẠCH, KHÔNG GỌI NOTES NỮA ---
   const sortedTags = [...filteredTags].sort((a, b) => {
-    const notesA = getNotesWithTag(a.name).length;
-    const notesB = getNotesWithTag(b.name).length;
-    
     switch (sortBy) {
-      case 'count': return notesB - notesA;
       case 'name': return a.name.localeCompare(b.name);
       case 'starred': return (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
       default: return 0;
@@ -162,10 +146,7 @@ export default function Tags() {
     );
   }
 
-  const totalNotesWithTags = notes.filter(note => note.tags && note.tags.length > 0).length;
-  const mostUsedTag = tags.length > 0 ? tags.reduce((prev, current) => 
-    getNotesWithTag(prev.name).length > getNotesWithTag(current.name).length ? prev : current
-  , tags[0]) : null;
+  // --- ĐÃ XÓA totalNotesWithTags VÀ mostUsedTag ---
 
   return (
     <Box sx={{ p: 3 }}>
@@ -175,7 +156,7 @@ export default function Tags() {
             Thẻ
           </Typography>
           <Typography variant="body2" color="#64748b">
-            Tổng: {tags.length} thẻ • {totalNotesWithTags} ghi chú được gắn thẻ
+            Tổng: {tags.length} thẻ
           </Typography>
         </Box>
         <Button
@@ -191,7 +172,6 @@ export default function Tags() {
         </Button>
       </Box>
 
-      {/* Toolbar giữ nguyên */}
       <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
         <TextField
           fullWidth
@@ -217,39 +197,14 @@ export default function Tags() {
             startAdornment={<SortIcon sx={{ color: '#64748b', mr: 1 }} />}
             sx={{ borderRadius: 2 }}
           >
-            <MenuItem value="count">Số lượng ghi chú</MenuItem>
+            {/* Đã xóa option sort by count */}
             <MenuItem value="name">Tên A-Z</MenuItem>
             <MenuItem value="starred">Gắn sao</MenuItem>
           </Select>
         </FormControl>
       </Box>
 
-      {mostUsedTag && tags.length > 0 && (
-        <Card sx={{ mb: 3, backgroundColor: '#f8fafc', borderRadius: 2 }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LabelIcon sx={{ color: mostUsedTag.color }} />
-                <Typography variant="body2" color="#64748b">
-                  Thẻ được sử dụng nhiều nhất:
-                </Typography>
-              </Box>
-              <Chip
-                label={mostUsedTag.name}
-                size="small"
-                sx={{
-                  backgroundColor: `${mostUsedTag.color}20`,
-                  color: mostUsedTag.color,
-                  fontWeight: 'bold'
-                }}
-              />
-              <Typography variant="body2" color="#64748b">
-                ({getNotesWithTag(mostUsedTag.name).length} ghi chú)
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
+      {/* ĐÃ XÓA CARD "MOST USED TAG" VÌ NÓ CẦN NOTES */}
 
       {sortedTags.length === 0 ? (
         <Alert severity="info" sx={{ borderRadius: 2, mb: 3 }}>
@@ -259,7 +214,7 @@ export default function Tags() {
 
       <Grid container spacing={3}>
         {sortedTags.map((tag) => {
-          const notesWithTag = getNotesWithTag(tag.name);
+          // Không còn tính toán notesWithTag ở đây nữa
           
           return (
             <Grid item xs={12} sm={6} md={4} lg={3} key={tag.id}>
@@ -285,10 +240,7 @@ export default function Tags() {
                         <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e293b' }}>
                           {tag.name}
                         </Typography>
-                        <Badge badgeContent={notesWithTag.length} color="primary"
-                          sx={{ '& .MuiBadge-badge': { backgroundColor: tag.color } }}>
-                          <Typography variant="caption" color="#64748b">ghi chú</Typography>
-                        </Badge>
+                        {/* Đã xóa Badge đếm số note */}
                       </Box>
                     </Box>
                     <IconButton size="small" onClick={() => toggleStarTag(tag.id)}>
@@ -305,7 +257,6 @@ export default function Tags() {
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 'auto', pt: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     </Box>
-                    {/* GIỮ NGUYÊN GIAO DIỆN CŨ CỦA EM Ở ĐÂY, CHỈ GẮN HÀM VÀO THÔI */}
                     <Box sx={{ display: 'flex' }}>
                        <Tooltip title="Sửa">
                            <IconButton onClick={() => handleOpenDialog(tag)} size="small" sx={{ color: '#64748b' }}><EditIcon /></IconButton>
