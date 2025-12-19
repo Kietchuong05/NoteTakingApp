@@ -27,6 +27,8 @@
 - **Framer Motion** – Animation
 - **Tiptap Editor** – Rich Text Editor
 - **Firebase** – Google Authentication
+### Backend
+- 
 ## ⚙️ Cài Đặt Dự Án
 ### Yêu Cầu Hệ Thống
 - Node.js >= 18
@@ -54,16 +56,27 @@ yarn install
 # Sau đó quay về thư mục gốc bằng cách:
 cd ..
 ```
-
+```bash
+# Tiếp theo tham chiếu đến thư mục backend bằng cách:
+cd backend
+```
+# sau đó nhập các lệnh sau
+```bash
+pip install -r requirements.txt
+```
+```bash
+.\venv\Scripts\activate
+```
 
 ### Bước 3: Khởi chạy ứng dụng 
 ```bash
 # ở Console Terminal frontend (cd frontend):
 npm run dev
 ```
+```bash
+# ở Console Terminal backend (cd backend):
+uvicorn main:app --reload
+```
 
-## Backend API (FastAPI + MySQL)
 
-1. **Cài đặt:**
-   `pip install -r requirements.txt`
 
