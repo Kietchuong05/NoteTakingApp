@@ -1,3 +1,8 @@
+# 📝 NoteTaking APP
+https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react&logoColor=white
+https://img.shields.io/badge/Firebase-Cloud-Firebase?logo=firebase&logoColor=white
+https://img.shields.io/badge/Material--UI-5.14.0-007FFF?logo=mui&logoColor=white
+https://img.shields.io/badge/License-MIT-A31F34?logo=open-source-initiative&logoColor=white
 # Backend API (FastAPI + MySQL)
 
 1. **Cài đặt:**
