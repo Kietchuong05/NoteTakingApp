@@ -28,7 +28,15 @@
 - **Tiptap Editor** – Rich Text Editor
 - **Firebase** – Google Authentication
 ### Backend
-- 
+- Python 3.10+
+- FastAPI – Framework xây dựng REST API nhanh, hiện đại
+- Uvicorn – ASGI server cho FastAPI
+- SQLAlchemy – ORM thao tác cơ sở dữ liệu
+- MySQL – Hệ quản trị cơ sở dữ liệu
+- mysql-connector-python / PyMySQL – Kết nối MySQL
+- Pydantic – Validate và serialize dữ liệu
+- python-dotenv – Quản lý biến môi trường
+- python-dotenv – Quản lý biến môi trường
 ## ⚙️ Cài Đặt Dự Án
 ### Yêu Cầu Hệ Thống
 - Node.js >= 18
