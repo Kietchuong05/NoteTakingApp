@@ -36,7 +36,6 @@
 - mysql-connector-python / PyMySQL – Kết nối MySQL
 - Pydantic – Validate và serialize dữ liệu
 - python-dotenv – Quản lý biến môi trường
-- python-dotenv – Quản lý biến môi trường
 ## ⚙️ Cài Đặt Dự Án
 ### Yêu Cầu Hệ Thống
 - Node.js >= 18
